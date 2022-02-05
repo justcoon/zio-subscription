@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+import "scalapb/scalapb.proto";
+import "google/protobuf/timestamp.proto";
+import "SubscriptionEntity.proto";
+package com.jc.subscription.domain.proto;
+
+option (scalapb.options) = {
+  package_name: "com.jc.subscription.domain.proto"
+  import: "com.jc.subscription.domain.proto._"
+  flat_package: true
+};
+
+message GetSubscriptionReq {
+  string id = 1 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.SubscriptionId"];
+}
+
+message GetSubscriptionRes {
+  com.jc.subscription.domain.proto.Subscription subscription = 1;
+}
+
+message GreateSubscriptionReq {
+  com.jc.subscription.domain.proto.Subscription subscription = 1;
+}
+
+service SubscriptionApiService {
+
+  rpc GetSubscription (GetSubscriptionReq) returns (GetSubscriptionRes) {
+  }
+}

@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+import "scalapb/scalapb.proto";
+
+package com.jc.logging.proto;
+
+option (scalapb.options) = {
+  package_name: "com.jc.logging.proto"
+  flat_package: true
+};
+
+enum LogLevel {
+    TRACE = 0;
+    DEBUG = 1;
+    INFO = 2;
+    WARN = 3;
+    ERROR = 4;
+    FATAL = 5;
+    OFF = 6;
+}
+
+message LoggerConfiguration {
+    // logger name
+    string name = 1;
+    LogLevel effectiveLevel = 2;
+    optional LogLevel configuredLevel = 3;
+}
+
+message SetLoggerConfigurationReq {
+    // logger name
+    string name = 1;
+    optional LogLevel level = 2;
+}
+
+message GetLoggerConfigurationReq {
+    // logger name
+    string name = 1;
+}
+
+message LoggerConfigurationRes {
+    LoggerConfiguration configuration = 1;
+    // supported log levels
+    repeated LogLevel levels = 2;
+}
+
+message GetLoggerConfigurationsReq {
+}
+
+message LoggerConfigurationsRes {
+    repeated LoggerConfiguration configurations = 1;
+    // supported log levels
+    repeated LogLevel levels = 2;
+}
+
+service LoggingSystemApiService {
+
+    // set log level for logger
+    rpc SetLoggerConfiguration (SetLoggerConfigurationReq) returns (LoggerConfigurationRes);
+
+    // get configuration of logger
+    rpc GetLoggerConfiguration (GetLoggerConfigurationReq) returns (LoggerConfigurationRes);
+
+    // get configurations of all loggers
+    rpc GetLoggerConfigurations (GetLoggerConfigurationsReq) returns (LoggerConfigurationsRes);
+
+}

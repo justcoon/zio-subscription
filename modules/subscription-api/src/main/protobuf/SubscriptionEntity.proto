@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+import "scalapb/scalapb.proto";
+import "google/protobuf/timestamp.proto";
+
+package com.jc.subscription.domain.proto;
+
+option (scalapb.options) = {
+  package_name: "com.jc.subscription.domain.proto"
+  import: "com.jc.subscription.domain.proto._"
+  flat_package: true
+};
+
+message Address {
+    string street = 1;
+    string number = 2;
+    string zip = 3;
+    string city = 4;
+    string state = 5;
+    string country = 6;
+}
+
+message Subscription {
+    string id = 1 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.SubscriptionId"];
+    string userId = 2 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.UserId"];
+    string email = 3;
+    Address address = 4;
+}
+
+message SubscriptionEntityState {
+    Subscription entity = 1;
+}
+
+message SubscriptionPayloadEvent {
+
+    option (scalapb.message).extends = "com.jc.subscription.domain.SubscriptionEntity.SubscriptionEvent";
+    string entityId = 1 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.SubscriptionId"];
+    string userId = 2 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.UserId"];
+    google.protobuf.Timestamp timestamp = 3 [(scalapb.field).type = "java.time.Instant", (scalapb.field).no_box = true];
+
+    oneof payload {
+        SubscriptionCreatedPayload created = 6;
+        SubscriptionRemovedPayload removed = 7;
+        SubscriptionAddressUpdatedPayload addressUpdated = 8;
+        SubscriptionEmailUpdatedPayload emailUpdated = 9;
+    }
+}
+
+message SubscriptionCreatedPayload {
+    string email = 2;
+    Address address = 3;
+}
+
+message SubscriptionRemovedPayload {
+
+}
+
+message SubscriptionAddressUpdatedPayload {
+    Address address = 1;
+}
+
+message SubscriptionEmailUpdatedPayload {
+    string email = 1;
+}
