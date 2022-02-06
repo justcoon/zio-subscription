@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+import "scalapb/scalapb.proto";
+import "google/protobuf/timestamp.proto";
+import "SubscriptionEntity.proto";
+package com.jc.subscription.domain.proto;
+
+option (scalapb.options) = {
+  package_name: "com.jc.subscription.domain.proto"
+  import: "com.jc.subscription.domain.proto._"
+  flat_package: true
+};
+
+
+message CreateSubscriptionReq {
+  string id = 1 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.SubscriptionId"];
+  string userId = 2 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.UserId"];
+  string email = 3;
+  com.jc.subscription.domain.proto.Address address = 4;
+}
+
+message CreateSubscriptionRes {
+  string id = 1 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.SubscriptionId"];
+  oneof result {
+    string success = 2;
+    string failure = 3;
+  }
+}
+
+message RemoveSubscriptionReq {
+  string id = 1 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.SubscriptionId"];
+}
+
+message RemoveSubscriptionRes {
+  string id = 1 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.SubscriptionId"];
+  oneof result {
+    string success = 2;
+    string failure = 3;
+  }
+}
+
+message GetSubscriptionReq {
+  string id = 1 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.SubscriptionId"];
+}
+
+message GetSubscriptionRes {
+  com.jc.subscription.domain.proto.Subscription subscription = 1;
+}
+
+message GetSubscriptionsReq {
+}
+
+message GetSubscriptionsRes {
+  repeated com.jc.subscription.domain.proto.Subscription subscriptions = 1;
+}
+
+service SubscriptionApiService {
+  rpc CreateSubscription (CreateSubscriptionReq) returns (CreateSubscriptionRes) {
+  }
+
+  rpc RemoveSubscription (RemoveSubscriptionReq) returns (RemoveSubscriptionRes) {
+  }
+
+  rpc GetSubscription (GetSubscriptionReq) returns (GetSubscriptionRes) {
+  }
+
+  rpc GetSubscriptions (GetSubscriptionsReq) returns (GetSubscriptionsRes) {
+  }
+}

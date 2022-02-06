@@ -1,6 +1,6 @@
 package com.jc.subscription.module
 
-import com.jc.subscription.domain.proto.ZioSubscription.RCSubscriptionApiService
+import com.jc.subscription.domain.proto.ZioSubscriptionApi.RCSubscriptionApiService
 import zio.Has
 
 package object api {

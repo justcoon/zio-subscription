@@ -1,4 +1,4 @@
-package com.jc.subscription.module.repo.quill
+package com.jc.subscription.module.db.quill
 
 import io.getquill.MappedEncoding
 import shapeless.tag

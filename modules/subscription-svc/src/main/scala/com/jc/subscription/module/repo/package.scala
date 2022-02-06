@@ -1,3 +1,7 @@
 package com.jc.subscription.module
 
-package object repo {}
+import zio.Has
+
+package object repo {
+  type SubscriptionRepo = Has[SubscriptionRepo.Service]
+}

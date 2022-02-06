@@ -5,6 +5,8 @@ import com.jc.subscription.module.api.{GrpcApiServer, HttpApiServer, Subscriptio
 import com.jc.auth.JwtAuthenticator
 import com.jc.logging.{LogbackLoggingSystem, LoggingSystem}
 import com.jc.logging.api.{LoggingSystemGrpcApi, LoggingSystemGrpcApiHandler}
+import com.jc.subscription.module.db.DbConnection
+import com.jc.subscription.module.repo.SubscriptionRepo
 import io.prometheus.client.exporter.{HTTPServer => PrometheusHttpServer}
 import zio._
 import zio.blocking.Blocking
@@ -23,8 +25,9 @@ import zio.magic._
 object Main extends App {
 
   type AppEnvironment = Clock
-    with Console with Blocking with JwtAuthenticator with LoggingSystem with LoggingSystemGrpcApiHandler
-    with SubscriptionGrpcApiHandler with GrpcServer with Has[HttpServer] with Logging with Registry with Exporters
+    with Console with Blocking with JwtAuthenticator with DbConnection with SubscriptionRepo with LoggingSystem
+    with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler with GrpcServer with Has[HttpServer] with Logging
+    with Registry with Exporters
 
   private def metrics(config: PrometheusConfig): ZIO[AppEnvironment, Throwable, PrometheusHttpServer] = {
     for {
@@ -41,6 +44,8 @@ object Main extends App {
       Blocking.live,
       Slf4jLogger.make((_, message) => message),
       JwtAuthenticator.live(appConfig.jwt),
+      DbConnection.live,
+      SubscriptionRepo.live,
       LogbackLoggingSystem.create(),
       LoggingSystemGrpcApi.live,
       SubscriptionGrpcApiHandler.live,

@@ -1,9 +1,10 @@
 package com.jc.subscription.module.repo
 
 import com.jc.subscription.domain.SubscriptionEntity.{SubscriptionId, UserId}
-import com.jc.subscription.module.repo.quill.{PostgresDBContext, TaggedEncodings}
-import io.getquill.{Embedded, SnakeCase}
-import io.getquill.context.zio.{PostgresZioJAsyncContext, ZioJAsyncConnection}
+import com.jc.subscription.module.db.DbConnection
+import com.jc.subscription.module.db.quill.{PostgresDbContext, TaggedEncodings}
+import io.getquill.Embedded
+import io.getquill.context.zio.ZioJAsyncConnection
 import zio.logging.{Logger, Logging}
 import zio.{Has, ZIO, ZLayer}
 
@@ -47,7 +48,7 @@ object SubscriptionRepo {
   }
 
   final class LiveService(dbConnection: ZioJAsyncConnection) extends Service with TaggedEncodings {
-    private val ctx = PostgresDBContext
+    private val ctx = PostgresDbContext
 
     import ctx._
 
@@ -96,11 +97,20 @@ object SubscriptionRepo {
     }
   }
 
-  def find(id: SubscriptionId): ZIO[Has[SubscriptionRepo.Service], Throwable, Option[Subscription]] = {
+  val live: ZLayer[DbConnection, Nothing, SubscriptionRepo] = {
+    val res = for {
+      dbConnection <- ZIO.service[ZioJAsyncConnection]
+    } yield {
+      new LiveService(dbConnection)
+    }
+    res.toLayer
+  }
+
+  def find(id: SubscriptionId): ZIO[SubscriptionRepo, Throwable, Option[Subscription]] = {
     ZIO.service[SubscriptionRepo.Service].flatMap(_.find(id))
   }
 
-  def findAll(): ZIO[Has[SubscriptionRepo.Service], Throwable, Seq[Subscription]] = {
+  def findAll(): ZIO[SubscriptionRepo, Throwable, Seq[Subscription]] = {
     ZIO.service[SubscriptionRepo.Service].flatMap(_.findAll())
   }
 }
