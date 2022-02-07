@@ -3,6 +3,7 @@ package com.jc.subscription
 import com.jc.subscription.model.config.{AppConfig, PrometheusConfig}
 import com.jc.subscription.module.api.{GrpcApiServer, HttpApiServer, SubscriptionGrpcApiHandler}
 import com.jc.auth.JwtAuthenticator
+import com.jc.cdc.DebeziumCDC
 import com.jc.logging.{LogbackLoggingSystem, LoggingSystem}
 import com.jc.logging.api.{LoggingSystemGrpcApi, LoggingSystemGrpcApiHandler}
 import com.jc.subscription.module.db.DbConnection
@@ -20,6 +21,7 @@ import zio.metrics.prometheus.helpers._
 import scalapb.zio_grpc.{Server => GrpcServer}
 import org.http4s.server.{Server => HttpServer}
 import eu.timepit.refined.auto._
+import io.debezium.engine.{ChangeEvent, DebeziumEngine}
 import zio.magic._
 
 object Main extends App {
@@ -27,7 +29,7 @@ object Main extends App {
   type AppEnvironment = Clock
     with Console with Blocking with JwtAuthenticator with DbConnection with SubscriptionRepo with LoggingSystem
     with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler with GrpcServer with Has[HttpServer] with Logging
-    with Registry with Exporters
+    with Registry with Exporters with Has[DebeziumEngine[ChangeEvent[String, String]]]
 
   private def metrics(config: PrometheusConfig): ZIO[AppEnvironment, Throwable, PrometheusHttpServer] = {
     for {
@@ -35,6 +37,10 @@ object Main extends App {
       _ <- initializeDefaultExports(registry)
       prometheusServer <- http(registry, config.port)
     } yield prometheusServer
+  }
+
+  private val handler: ChangeEvent[String, String] => Unit = event => {
+    println("EVENT " + event)
   }
 
   private def createAppLayer(appConfig: AppConfig): ZLayer[Any, Throwable, AppEnvironment] = {
@@ -51,6 +57,7 @@ object Main extends App {
       SubscriptionGrpcApiHandler.live,
       HttpApiServer.create(appConfig.restApi),
       GrpcApiServer.create(appConfig.grpcApi),
+      DebeziumCDC.create(handler).toLayer,
       Registry.live,
       Exporters.live
     )
