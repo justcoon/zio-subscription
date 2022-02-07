@@ -1,13 +1,11 @@
 package com.jc.cdc
 
 import io.debezium.config.Configuration
-import io.debezium.engine.format.{ChangeEventFormat, Json}
+import io.debezium.engine.format.Json
 import io.debezium.engine.{ChangeEvent, DebeziumEngine}
-import zio.blocking.{blocking, Blocking}
-import zio.{ZIO, ZManaged}
+import zio.blocking.Blocking
+import zio.{URIO, ZIO, ZManaged}
 
-import java.util.concurrent.Executor
-import java.util.function.Consumer
 import scala.util.Try
 
 object DebeziumCDC {
@@ -34,25 +32,32 @@ object DebeziumCDC {
     .`with`("database.history.file.filename", "/tmp/dbhistory.dat")
     .build
 
-  def createEngine(handler: ChangeEvent[String, String] => Unit) = {
+  def createEngine(handler: ChangeEvent[String, String] => Try[Unit]) = {
     Try {
-      val c: java.util.function.Consumer[ChangeEvent[String, String]] = (t: ChangeEvent[String, String]) => handler(t)
+      val consumer: java.util.function.Consumer[ChangeEvent[String, String]] = (e: ChangeEvent[String, String]) => {
+        handler(e).get
+      }
 
-      val e: DebeziumEngine[ChangeEvent[String, String]] = DebeziumEngine
+      val engine: DebeziumEngine[ChangeEvent[String, String]] = DebeziumEngine
         .create(classOf[Json])
         .using(connectorConfiguration().asProperties())
-        .notifying(c)
+        .notifying(consumer)
         .build()
 
-      e
+      engine
     }
   }
 
-  def create(handler: ChangeEvent[String, String] => Unit)
-    : ZManaged[Blocking, Throwable, DebeziumEngine[ChangeEvent[String, String]]] = {
+  def create[R](handler: ChangeEvent[String, String] => ZIO[R, Throwable, Unit])
+    : ZManaged[Blocking with R, Throwable, DebeziumEngine[ChangeEvent[String, String]]] = {
     val engine = for {
+      r <- ZIO.runtime[R]
       b <- ZIO.service[Blocking.Service]
-      engine <- ZIO.fromTry(createEngine(handler))
+      engine <- ZIO.fromTry {
+        createEngine { event =>
+          r.unsafeRunSync(handler(event)).toEither.toTry
+        }
+      }
     } yield {
       b.blockingExecutor.asJava.execute(engine)
       engine
@@ -60,4 +65,24 @@ object DebeziumCDC {
     engine.toManaged(engine => ZIO.effect(engine.close()).ignore)
   }
 
+//  def createEngine2(handler: ChangeEvent[String, String] => Unit) = {
+//
+//    val consumer  = new io.debezium.engine.DebeziumEngine.ChangeConsumer[ChangeEvent[String, String]] {
+//      override def handleBatch(records: util.List[ChangeEvent[String, String]], committer: DebeziumEngine.RecordCommitter[ChangeEvent[String, String]]): Unit = {
+//
+//      }
+//    }
+//
+//    Try {
+//      val c: java.util.function.Consumer[ChangeEvent[String, String]] = (t: ChangeEvent[String, String]) => handler(t)
+//
+//      val e: DebeziumEngine[ChangeEvent[String, String]] = DebeziumEngine
+//        .create(classOf[Json])
+//        .using(connectorConfiguration().asProperties())
+//        .notifying(c)
+//        .build()
+//
+//      e
+//    }
+//  }
 }

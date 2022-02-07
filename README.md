@@ -11,6 +11,19 @@ https://www.baeldung.com/debezium-intro
 * postgres
 * kafka
 
+### postgres wal setup
+
+setup
+
+```sql
+ALTER SYSTEM SET wal_level = logical;
+```
+and then restart and check
+
+```sql
+SHOW wal_level;
+```
+
 ### application setup
 
 multi nodes VMs arguments

@@ -14,7 +14,7 @@ import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.console.Console
 import zio.logging.slf4j.Slf4jLogger
-import zio.logging.Logging
+import zio.logging.{Logger, Logging}
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.exporters.Exporters
 import zio.metrics.prometheus.helpers._
@@ -39,8 +39,11 @@ object Main extends App {
     } yield prometheusServer
   }
 
-  private val handler: ChangeEvent[String, String] => Unit = event => {
-    println("EVENT " + event)
+  private def handler(event: ChangeEvent[String, String]) = {
+    for {
+      logger <- ZIO.service[Logger[String]]
+      _ <- logger.debug(s"EVENT: ${event.value()}")
+    } yield ()
   }
 
   private def createAppLayer(appConfig: AppConfig): ZLayer[Any, Throwable, AppEnvironment] = {
