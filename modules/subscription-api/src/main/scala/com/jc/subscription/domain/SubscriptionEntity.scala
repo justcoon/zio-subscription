@@ -30,4 +30,6 @@ object SubscriptionEntity {
     def entityId: SubscriptionId
     def timestamp: java.time.Instant
   }
+
+  val defaultPartitionKeyStrategy: SubscriptionEvent => String = (e: SubscriptionEvent) => s"${e.entityId}"
 }
