@@ -10,10 +10,10 @@ import scala.util.Try
 
 object DebeziumCDC {
 
-  def connectorConfiguration(): Configuration = io.debezium.config.Configuration.create
+  def connectorConfiguration(): Configuration = Configuration.create
     .`with`("name", "subscription-outbox-connector")
     .`with`("connector.class", "io.debezium.connector.postgresql.PostgresConnector")
-    .`with`("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore")
+//    .`with`("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore")
     .`with`("offset.storage.file.filename", "/tmp/offsets.dat")
     .`with`("offset.flush.interval.ms", "60000")
     .`with`("database.hostname", "localhost")
@@ -24,7 +24,7 @@ object DebeziumCDC {
     .`with`("database.dbname", "subscription")
 //    .`with`("database.include.list", "subscription")
 //    .`with`("schema.whitelist", "public")
-    .`with`("table.whitelist", "public.subscriptions")
+    .`with`("table.whitelist", "public.subscription_events")
 //    .`with`("include.schema.changes", "false")
     .`with`("database.server.id", "1")
     .`with`("database.server.name", "dbserver")
@@ -48,6 +48,13 @@ object DebeziumCDC {
     }
   }
 
+  def getChangeEventPayload(event: ChangeEvent[String, String]): Option[io.circe.Json] = {
+    import io.circe.parser._
+    parse(event.value()).toOption.flatMap { json =>
+      json.hcursor.downField("payload").downField("after").focus
+    }
+  }
+
   def create[R](handler: ChangeEvent[String, String] => ZIO[R, Throwable, Unit])
     : ZManaged[Blocking with R, Throwable, DebeziumEngine[ChangeEvent[String, String]]] = {
     val engine = for {
@@ -59,7 +66,7 @@ object DebeziumCDC {
         }
       }
     } yield {
-      b.blockingExecutor.asJava.execute(engine)
+      b.blockingExecutor.submitOrThrow(engine)
       engine
     }
     engine.toManaged(engine => ZIO.effect(engine.close()).ignore)

@@ -13,7 +13,7 @@ import com.jc.subscription.domain.proto.{
   RemoveSubscriptionRes
 }
 import com.jc.subscription.domain.proto.ZioSubscriptionApi.RCSubscriptionApiService
-import com.jc.subscription.module.repo.SubscriptionRepo
+import com.jc.subscription.module.domain.SubscriptionDomain
 import io.grpc.Status
 import scalapb.zio_grpc.RequestContext
 import zio.{Has, ZIO, ZLayer}
@@ -25,52 +25,52 @@ object SubscriptionGrpcApiHandler {
   }
 
   final class LiveSubscriptionApiService(
-    subscriptionRepo: SubscriptionRepo.Service,
+    subscriptionService: SubscriptionDomain.Service,
     jwtAuthenticator: JwtAuthenticator.Service)
       extends RCSubscriptionApiService[Any] {
-    import io.scalaland.chimney.dsl._
+
     private val authenticated = GrpcJwtAuth.authenticated(jwtAuthenticator)
 
     override def getSubscription(
       request: GetSubscriptionReq): ZIO[Any with Has[RequestContext], Status, GetSubscriptionRes] = {
       for {
         _ <- authenticated
-        res <- subscriptionRepo.find(request.id).mapError(toStatus)
-      } yield GetSubscriptionRes(res.map(_.transformInto[com.jc.subscription.domain.proto.Subscription]))
+        res <- subscriptionService.getSubscription(request).mapError(toStatus)
+      } yield res
     }
 
     override def createSubscription(
       request: CreateSubscriptionReq): ZIO[Any with Has[RequestContext], Status, CreateSubscriptionRes] = {
-      val value = request.transformInto[SubscriptionRepo.Subscription]
+
       for {
         _ <- authenticated
-        _ <- subscriptionRepo.insert(value).mapError(toStatus)
-      } yield CreateSubscriptionRes(request.id)
+        res <- subscriptionService.createSubscription(request).mapError(toStatus)
+      } yield res
     }
 
     override def removeSubscription(
       request: RemoveSubscriptionReq): ZIO[Any with Has[RequestContext], Status, RemoveSubscriptionRes] = {
       for {
         _ <- authenticated
-        _ <- subscriptionRepo.delete(request.id).mapError(toStatus)
-      } yield RemoveSubscriptionRes(request.id)
+        res <- subscriptionService.removeSubscription(request).mapError(toStatus)
+      } yield res
     }
 
     override def getSubscriptions(
       request: GetSubscriptionsReq): ZIO[Any with Has[RequestContext], Status, GetSubscriptionsRes] = {
       for {
         _ <- authenticated
-        res <- subscriptionRepo.findAll().mapError(toStatus)
-      } yield GetSubscriptionsRes(res.map(_.transformInto[com.jc.subscription.domain.proto.Subscription]))
+        res <- subscriptionService.getSubscriptions(request).mapError(toStatus)
+      } yield res
     }
   }
 
-  val live: ZLayer[SubscriptionRepo with JwtAuthenticator, Nothing, SubscriptionGrpcApiHandler] = {
+  val live: ZLayer[SubscriptionDomain with JwtAuthenticator, Nothing, SubscriptionGrpcApiHandler] = {
     val res = for {
       jwtAuth <- ZIO.service[JwtAuthenticator.Service]
-      repo <- ZIO.service[SubscriptionRepo.Service]
+      service <- ZIO.service[SubscriptionDomain.Service]
     } yield {
-      new LiveSubscriptionApiService(repo, jwtAuth)
+      new LiveSubscriptionApiService(service, jwtAuth)
     }
     res.toLayer
   }

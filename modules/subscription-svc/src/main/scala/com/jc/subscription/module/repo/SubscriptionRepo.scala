@@ -2,15 +2,17 @@ package com.jc.subscription.module.repo
 
 import com.jc.subscription.domain.SubscriptionEntity.{SubscriptionId, UserId}
 import com.jc.subscription.module.db.DbConnection
-import com.jc.subscription.module.db.quill.{PostgresDbContext, TaggedEncodings}
+import com.jc.subscription.module.db.quill.{InstantEncodings, PostgresDbContext, TaggedEncodings}
 import io.getquill.Embedded
 import io.getquill.context.zio.ZioJAsyncConnection
 import zio.logging.{Logger, Logging}
 import zio.{Has, ZIO, ZLayer}
 
+import java.time.Instant
+
 object SubscriptionRepo {
 
-  trait Service extends Repository[Any, SubscriptionId, Subscription]
+  trait Service[R] extends Repository[R, SubscriptionId, Subscription]
 
   final case class Address(
     street: String,
@@ -32,7 +34,9 @@ object SubscriptionRepo {
     id: SubscriptionId,
     userId: UserId,
     email: String,
-    address: Option[Address] = None
+    address: Option[Address] = None,
+    createdAt: Instant,
+    modifiedAt: Option[Instant] = None
   ) extends Repository.Entity[SubscriptionId]
 
   object Subscription {
@@ -47,7 +51,7 @@ object SubscriptionRepo {
     implicit val subscriptionEncoder: Encoder[Subscription] = deriveEncoder[Subscription]
   }
 
-  final class LiveService(dbConnection: ZioJAsyncConnection) extends Service with TaggedEncodings {
+  final class LiveService() extends Service[DbConnection] with TaggedEncodings with InstantEncodings {
     private val ctx = PostgresDbContext
 
     import ctx._
@@ -64,53 +68,29 @@ object SubscriptionRepo {
       )
     }
 
-    private val dbLayer = ZLayer.succeed(dbConnection)
-
-    override def insert(value: Subscription): ZIO[Any, Throwable, Boolean] = {
-      ctx.transaction {
-        ctx.run(query.insertValue(lift(value))).map(_ => true)
-      }.provideLayer(dbLayer)
+    override def insert(value: Subscription): ZIO[DbConnection, Throwable, Boolean] = {
+      ctx.run(query.insertValue(lift(value))).map(_ => true)
     }
 
-    override def update(value: Subscription): ZIO[Any, Throwable, Boolean] = {
-      ctx.transaction {
-        ctx.run(query.updateValue(lift(value))).map(_ => true)
-      }.provideLayer(dbLayer)
+    override def update(value: Subscription): ZIO[DbConnection, Throwable, Boolean] = {
+      ctx.run(query.updateValue(lift(value))).map(_ => true)
     }
 
-    override def delete(id: SubscriptionId): ZIO[Any, Throwable, Boolean] = {
-      ctx.transaction {
-        ctx.run(query.filter(_.id == lift(id)).delete).map(_ => true)
-      }.provideLayer(dbLayer)
+    override def delete(id: SubscriptionId): ZIO[DbConnection, Throwable, Boolean] = {
+      ctx.run(query.filter(_.id == lift(id)).delete).map(_ => true)
     }
 
-    override def find(id: SubscriptionId): ZIO[Any, Throwable, Option[Subscription]] = {
-      ctx.transaction {
-        ctx.run(query.filter(_.id == lift(id))).map(_.headOption)
-      }.provideLayer(dbLayer)
+    override def find(id: SubscriptionId): ZIO[DbConnection, Throwable, Option[Subscription]] = {
+      ctx.run(query.filter(_.id == lift(id))).map(_.headOption)
     }
 
-    override def findAll(): ZIO[Any, Throwable, Seq[Subscription]] = {
-      ctx.transaction {
-        ctx.run(query)
-      }.provideLayer(dbLayer)
+    override def findAll(): ZIO[DbConnection, Throwable, Seq[Subscription]] = {
+      ctx.run(query)
     }
   }
 
-  val live: ZLayer[DbConnection, Nothing, SubscriptionRepo] = {
-    val res = for {
-      dbConnection <- ZIO.service[ZioJAsyncConnection]
-    } yield {
-      new LiveService(dbConnection)
-    }
-    res.toLayer
+  val live: ZLayer[Any, Nothing, SubscriptionRepo] = {
+    ZLayer.succeed(new LiveService)
   }
 
-  def find(id: SubscriptionId): ZIO[SubscriptionRepo, Throwable, Option[Subscription]] = {
-    ZIO.service[SubscriptionRepo.Service].flatMap(_.find(id))
-  }
-
-  def findAll(): ZIO[SubscriptionRepo, Throwable, Seq[Subscription]] = {
-    ZIO.service[SubscriptionRepo.Service].flatMap(_.findAll())
-  }
 }

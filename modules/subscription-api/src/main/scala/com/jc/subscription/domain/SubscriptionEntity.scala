@@ -28,9 +28,6 @@ object SubscriptionEntity {
 
   trait SubscriptionEvent {
     def entityId: SubscriptionId
-
-    def userId: UserId
-
     def timestamp: java.time.Instant
   }
 }

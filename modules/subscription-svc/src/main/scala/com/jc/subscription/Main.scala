@@ -7,7 +7,8 @@ import com.jc.cdc.DebeziumCDC
 import com.jc.logging.{LogbackLoggingSystem, LoggingSystem}
 import com.jc.logging.api.{LoggingSystemGrpcApi, LoggingSystemGrpcApiHandler}
 import com.jc.subscription.module.db.DbConnection
-import com.jc.subscription.module.repo.SubscriptionRepo
+import com.jc.subscription.module.domain.SubscriptionDomain
+import com.jc.subscription.module.repo.{SubscriptionEventRepo, SubscriptionRepo}
 import io.prometheus.client.exporter.{HTTPServer => PrometheusHttpServer}
 import zio._
 import zio.blocking.Blocking
@@ -27,9 +28,10 @@ import zio.magic._
 object Main extends App {
 
   type AppEnvironment = Clock
-    with Console with Blocking with JwtAuthenticator with DbConnection with SubscriptionRepo with LoggingSystem
-    with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler with GrpcServer with Has[HttpServer] with Logging
-    with Registry with Exporters with Has[DebeziumEngine[ChangeEvent[String, String]]]
+    with Console with Blocking with JwtAuthenticator with DbConnection with SubscriptionRepo with SubscriptionEventRepo
+    with SubscriptionDomain with LoggingSystem with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler
+    with GrpcServer with Has[HttpServer] with Logging with Registry with Exporters
+    with Has[DebeziumEngine[ChangeEvent[String, String]]]
 
   private def metrics(config: PrometheusConfig): ZIO[AppEnvironment, Throwable, PrometheusHttpServer] = {
     for {
@@ -40,9 +42,10 @@ object Main extends App {
   }
 
   private def handler(event: ChangeEvent[String, String]) = {
+    val e = DebeziumCDC.getChangeEventPayload(event)
     for {
       logger <- ZIO.service[Logger[String]]
-      _ <- logger.debug(s"EVENT: ${event.value()}")
+      _ <- logger.debug(s"EVENT: ${e}")
     } yield ()
   }
 
@@ -55,6 +58,8 @@ object Main extends App {
       JwtAuthenticator.live(appConfig.jwt),
       DbConnection.live,
       SubscriptionRepo.live,
+      SubscriptionEventRepo.live,
+      SubscriptionDomain.live,
       LogbackLoggingSystem.create(),
       LoggingSystemGrpcApi.live,
       SubscriptionGrpcApiHandler.live,
