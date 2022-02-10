@@ -102,8 +102,8 @@ object SubscriptionDomain {
           val event = getEventRecord(eventData)
 
           for {
-            _ <- subscriptionRepo.delete(request.id)
-            _ <- subscriptionEventRepo.insert(event)
+            deleted <- subscriptionRepo.delete(request.id)
+            _ <- ZIO.when(deleted)(subscriptionEventRepo.insert(event))
           } yield {
             RemoveSubscriptionRes(request.id)
           }

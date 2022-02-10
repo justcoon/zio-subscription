@@ -19,8 +19,8 @@ lazy val Versions = new {
   val grpc = "1.44.0"
   val chimney = "0.6.1"
   val pauldijouJwt = "5.0.0"
-  val quill = "3.16.1"
-  val debezium = "1.8.0.Final"
+  val quill = "3.16.3"
+  val debezium = "1.8.1.Final"
 }
 
 lazy val library =

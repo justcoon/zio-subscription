@@ -3,7 +3,7 @@ package com.jc.subscription.module.db
 import com.github.jasync.sql.db.postgresql.PostgreSQLConnection
 import com.typesafe.config.ConfigFactory
 import io.getquill.context.zio.{JAsyncContextConfig, PostgresJAsyncContextConfig, ZioJAsyncConnection}
-import zio.{Has, ZIO, ZLayer}
+import zio.{ZIO, ZLayer}
 
 object DbConnection {
 

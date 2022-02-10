@@ -71,11 +71,11 @@ object SubscriptionRepo {
     }
 
     override def update(value: Subscription): ZIO[DbConnection, Throwable, Boolean] = {
-      ctx.run(query.updateValue(lift(value))).map(_ => true)
+      ctx.run(query.updateValue(lift(value))).map(_ > 0)
     }
 
     override def delete(id: SubscriptionId): ZIO[DbConnection, Throwable, Boolean] = {
-      ctx.run(query.filter(_.id == lift(id)).delete).map(_ => true)
+      ctx.run(query.filter(_.id == lift(id)).delete).map(_ > 0)
     }
 
     override def find(id: SubscriptionId): ZIO[DbConnection, Throwable, Option[Subscription]] = {
