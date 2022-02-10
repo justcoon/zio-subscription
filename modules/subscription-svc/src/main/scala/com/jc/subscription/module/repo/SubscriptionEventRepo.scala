@@ -10,7 +10,7 @@ import java.util.Base64
 
 object SubscriptionEventRepo {
 
-  trait Service[R] /*extends Repository[R, String, SubscriptionEvent]*/ {
+  trait Service[R] {
     def insert(value: SubscriptionEvent): ZIO[R, Throwable, Boolean]
   }
 
@@ -52,22 +52,6 @@ object SubscriptionEventRepo {
     override def insert(value: SubscriptionEvent): ZIO[DbConnection, Throwable, Boolean] = {
       ctx.run(query.insertValue(lift(value))).map(_ => true)
     }
-
-//    override def update(value: SubscriptionEvent): ZIO[DbConnection, Throwable, Boolean] = {
-//      ctx.run(query.updateValue(lift(value))).map(_ => true)
-//    }
-//
-//    override def delete(id: String): ZIO[DbConnection, Throwable, Boolean] = {
-//      ctx.run(query.filter(_.id == lift(id)).delete).map(_ => true)
-//    }
-//
-//    override def find(id: String): ZIO[DbConnection, Throwable, Option[SubscriptionEvent]] = {
-//      ctx.run(query.filter(_.id == lift(id))).map(_.headOption)
-//    }
-//
-//    override def findAll(): ZIO[DbConnection, Throwable, Seq[SubscriptionEvent]] = {
-//      ctx.run(query)
-//    }
   }
 
   val live: ZLayer[Any, Nothing, SubscriptionEventRepo] = {

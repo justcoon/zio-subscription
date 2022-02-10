@@ -94,16 +94,17 @@ object SubscriptionDomain {
     override def removeSubscription(request: RemoveSubscriptionReq): ZIO[Any, Throwable, RemoveSubscriptionRes] = {
       logger.info(s"removeSubscription - id: ${request.id}") *>
         ctx.transaction {
-          val eventData = SubscriptionPayloadEvent(
-            request.id,
-            Instant.now(),
-            SubscriptionPayloadEvent.Payload.Removed(SubscriptionRemovedPayload())
-          )
-          val event = getEventRecord(eventData)
-
           for {
             deleted <- subscriptionRepo.delete(request.id)
-            _ <- ZIO.when(deleted)(subscriptionEventRepo.insert(event))
+            _ <- ZIO.when(deleted) {
+              val eventData = SubscriptionPayloadEvent(
+                request.id,
+                Instant.now(),
+                SubscriptionPayloadEvent.Payload.Removed(SubscriptionRemovedPayload())
+              )
+              val event = getEventRecord(eventData)
+              subscriptionEventRepo.insert(event)
+            }
           } yield {
             RemoveSubscriptionRes(request.id)
           }
