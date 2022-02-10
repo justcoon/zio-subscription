@@ -6,6 +6,7 @@ import com.jc.auth.JwtAuthenticator
 import com.jc.cdc.DebeziumCDC
 import com.jc.logging.{LogbackLoggingSystem, LoggingSystem}
 import com.jc.logging.api.{LoggingSystemGrpcApi, LoggingSystemGrpcApiHandler}
+import com.jc.subscription.domain.proto.SubscriptionPayloadEvent
 import com.jc.subscription.module.db.DbConnection
 import com.jc.subscription.module.domain.SubscriptionDomain
 import com.jc.subscription.module.repo.{SubscriptionEventRepo, SubscriptionRepo}
@@ -42,7 +43,14 @@ object Main extends App {
   }
 
   private def handler(event: ChangeEvent[String, String]) = {
-    val e = DebeziumCDC.getChangeEventPayload(event)
+    val e = DebeziumCDC
+      .getChangeEventPayload(event)
+      .flatMap { json =>
+        json.as(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder).toOption
+      }
+      .map { storedEvent =>
+        storedEvent -> SubscriptionPayloadEvent.parseFrom(storedEvent.data)
+      }
     for {
       logger <- ZIO.service[Logger[String]]
       _ <- logger.debug(s"EVENT: ${e}")

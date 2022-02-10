@@ -6,6 +6,7 @@ import com.jc.subscription.module.db.quill.{InstantEncodings, PostgresDbContext,
 import zio.{ZIO, ZLayer}
 
 import java.time.Instant
+import java.util.Base64
 
 object SubscriptionEventRepo {
 
@@ -24,8 +25,19 @@ object SubscriptionEventRepo {
   object SubscriptionEvent {
     import io.circe._
     import io.circe.generic.semiauto._
-    implicit val subscriptionDecoder: Decoder[SubscriptionEvent] = deriveDecoder[SubscriptionEvent]
-    implicit val subscriptionEncoder: Encoder[SubscriptionEvent] = deriveEncoder[SubscriptionEvent]
+
+    val cdcDecoder: Decoder[SubscriptionEventRepo.SubscriptionEvent] = (c: HCursor) =>
+      for {
+        id <- c.downField("id").as[String]
+        entityId <- c.downField("entity_id").as[SubscriptionId]
+        tpe <- c.downField("type").as[String]
+        d <- c.downField("data").as[String]
+        at <- c.downField("created_at").as[Long]
+      } yield {
+        val data = Base64.getDecoder.decode(d)
+        val createdAt = Instant.ofEpochMilli(at / 1000)
+        SubscriptionEventRepo.SubscriptionEvent(id, entityId, tpe, data, createdAt)
+      }
   }
 
   final class LiveService() extends Service[DbConnection] with TaggedEncodings with InstantEncodings {

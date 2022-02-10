@@ -4,9 +4,7 @@ import com.jc.subscription.domain.SubscriptionEntity.{SubscriptionId, UserId}
 import com.jc.subscription.module.db.DbConnection
 import com.jc.subscription.module.db.quill.{InstantEncodings, PostgresDbContext, TaggedEncodings}
 import io.getquill.Embedded
-import io.getquill.context.zio.ZioJAsyncConnection
-import zio.logging.{Logger, Logging}
-import zio.{Has, ZIO, ZLayer}
+import zio.{ZIO, ZLayer}
 
 import java.time.Instant
 
