@@ -11,4 +11,5 @@ object KafkaProducer {
     import eu.timepit.refined.auto._
     Producer.make(ProducerSettings(config.addresses)).toLayer
   }
+
 }

@@ -9,6 +9,8 @@ import com.jc.logging.api.{LoggingSystemGrpcApi, LoggingSystemGrpcApiHandler}
 import com.jc.subscription.domain.proto.SubscriptionPayloadEvent
 import com.jc.subscription.module.db.DbConnection
 import com.jc.subscription.module.domain.SubscriptionDomain
+import com.jc.subscription.module.event.SubscriptionEventProducer
+import com.jc.subscription.module.kafka.KafkaProducer
 import com.jc.subscription.module.repo.{SubscriptionEventRepo, SubscriptionRepo}
 import io.prometheus.client.exporter.{HTTPServer => PrometheusHttpServer}
 import zio._
@@ -30,8 +32,8 @@ object Main extends App {
 
   type AppEnvironment = Clock
     with Console with Blocking with JwtAuthenticator with DbConnection with SubscriptionRepo with SubscriptionEventRepo
-    with SubscriptionDomain with LoggingSystem with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler
-    with GrpcServer with Has[HttpServer] with Logging with Registry with Exporters
+    with SubscriptionDomain with SubscriptionEventProducer with LoggingSystem with LoggingSystemGrpcApiHandler
+    with SubscriptionGrpcApiHandler with GrpcServer with Has[HttpServer] with Logging with Registry with Exporters
     with Has[DebeziumEngine[ChangeEvent[String, String]]]
 
   private def metrics(config: PrometheusConfig): ZIO[AppEnvironment, Throwable, PrometheusHttpServer] = {
@@ -45,15 +47,17 @@ object Main extends App {
   private def handler(event: ChangeEvent[String, String]) = {
     val e = DebeziumCDC
       .getChangeEventPayload(event)
+      .toRight("N/A")
       .flatMap { json =>
-        json.as(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder).toOption
-      }
-      .map { storedEvent =>
-        storedEvent -> SubscriptionPayloadEvent.parseFrom(storedEvent.data)
+        json.as(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder)
       }
     for {
       logger <- ZIO.service[Logger[String]]
-      _ <- logger.debug(s"EVENT: ${e}")
+      producer <- ZIO.service[SubscriptionEventProducer.Service]
+      _ <- e match {
+        case Right(e) => logger.debug(s"sending event: ${e}") *> producer.send(e)
+        case Left(e) => logger.debug(s"sending event error: ${e}")
+      }
     } yield ()
   }
 
@@ -71,6 +75,8 @@ object Main extends App {
       LogbackLoggingSystem.create(),
       LoggingSystemGrpcApi.live,
       SubscriptionGrpcApiHandler.live,
+      KafkaProducer.create(appConfig.kafka),
+      SubscriptionEventProducer.create(appConfig.kafka.subscriptionTopic),
       HttpApiServer.create(appConfig.restApi),
       GrpcApiServer.create(appConfig.grpcApi),
       DebeziumCDC.create(handler).toLayer,
