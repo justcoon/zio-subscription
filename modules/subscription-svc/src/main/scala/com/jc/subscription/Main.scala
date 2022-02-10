@@ -3,28 +3,38 @@ package com.jc.subscription
 import com.jc.subscription.model.config.{AppConfig, PrometheusConfig}
 import com.jc.subscription.module.api.{GrpcApiServer, HttpApiServer, SubscriptionGrpcApiHandler}
 import com.jc.auth.JwtAuthenticator
+import com.jc.cdc.DebeziumCDC
 import com.jc.logging.{LogbackLoggingSystem, LoggingSystem}
 import com.jc.logging.api.{LoggingSystemGrpcApi, LoggingSystemGrpcApiHandler}
+import com.jc.subscription.domain.proto.SubscriptionPayloadEvent
+import com.jc.subscription.module.db.DbConnection
+import com.jc.subscription.module.domain.SubscriptionDomain
+import com.jc.subscription.module.event.SubscriptionEventProducer
+import com.jc.subscription.module.kafka.KafkaProducer
+import com.jc.subscription.module.repo.{SubscriptionEventRepo, SubscriptionRepo}
 import io.prometheus.client.exporter.{HTTPServer => PrometheusHttpServer}
 import zio._
 import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.console.Console
 import zio.logging.slf4j.Slf4jLogger
-import zio.logging.Logging
+import zio.logging.{Logger, Logging}
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.exporters.Exporters
 import zio.metrics.prometheus.helpers._
 import scalapb.zio_grpc.{Server => GrpcServer}
 import org.http4s.server.{Server => HttpServer}
 import eu.timepit.refined.auto._
+import io.debezium.engine.{ChangeEvent, DebeziumEngine}
 import zio.magic._
 
 object Main extends App {
 
   type AppEnvironment = Clock
-    with Console with Blocking with JwtAuthenticator with LoggingSystem with LoggingSystemGrpcApiHandler
+    with Console with Blocking with JwtAuthenticator with DbConnection with SubscriptionRepo with SubscriptionEventRepo
+    with SubscriptionDomain with SubscriptionEventProducer with LoggingSystem with LoggingSystemGrpcApiHandler
     with SubscriptionGrpcApiHandler with GrpcServer with Has[HttpServer] with Logging with Registry with Exporters
+    with Has[DebeziumEngine[ChangeEvent[String, String]]]
 
   private def metrics(config: PrometheusConfig): ZIO[AppEnvironment, Throwable, PrometheusHttpServer] = {
     for {
@@ -34,6 +44,23 @@ object Main extends App {
     } yield prometheusServer
   }
 
+  private def handler(event: ChangeEvent[String, String]) = {
+    val e = DebeziumCDC
+      .getChangeEventPayload(event)
+      .toRight("N/A")
+      .flatMap { json =>
+        json.as(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder)
+      }
+    for {
+      logger <- ZIO.service[Logger[String]]
+      producer <- ZIO.service[SubscriptionEventProducer.Service]
+      _ <- e match {
+        case Right(e) => logger.debug(s"sending event: ${e}") *> producer.send(e)
+        case Left(e) => logger.debug(s"sending event error: ${e}")
+      }
+    } yield ()
+  }
+
   private def createAppLayer(appConfig: AppConfig): ZLayer[Any, Throwable, AppEnvironment] = {
     ZLayer.fromMagic[AppEnvironment](
       Clock.live,
@@ -41,11 +68,18 @@ object Main extends App {
       Blocking.live,
       Slf4jLogger.make((_, message) => message),
       JwtAuthenticator.live(appConfig.jwt),
+      DbConnection.live,
+      SubscriptionRepo.live,
+      SubscriptionEventRepo.live,
+      SubscriptionDomain.live,
       LogbackLoggingSystem.create(),
       LoggingSystemGrpcApi.live,
       SubscriptionGrpcApiHandler.live,
+      KafkaProducer.create(appConfig.kafka),
+      SubscriptionEventProducer.create(appConfig.kafka.subscriptionTopic),
       HttpApiServer.create(appConfig.restApi),
       GrpcApiServer.create(appConfig.grpcApi),
+      DebeziumCDC.create(handler).toLayer,
       Registry.live,
       Exporters.live
     )

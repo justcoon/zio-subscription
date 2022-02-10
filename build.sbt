@@ -19,7 +19,8 @@ lazy val Versions = new {
   val grpc = "1.44.0"
   val chimney = "0.6.1"
   val pauldijouJwt = "5.0.0"
-  val quill = "3.16.1"
+  val quill = "3.16.3"
+  val debezium = "1.8.1.Final"
 }
 
 lazy val library =
@@ -61,6 +62,11 @@ lazy val library =
 
     // Java libraries
     val logback = "ch.qos.logback" % "logback-classic" % Versions.logback
+
+    val debeziumApi = "io.debezium" % "debezium-api" % Versions.debezium
+    val debeziumEmbedded = "io.debezium" % "debezium-embedded" % Versions.debezium
+    val debeziumConnectorPostgres = "io.debezium" % "debezium-connector-postgres" % Versions.debezium
+    val debeziumQuarkusOutbox = "io.debezium" % "debezium-quarkus-outbox" % Versions.debezium
   }
 
 lazy val `zio-subscription` =
@@ -103,6 +109,10 @@ lazy val `core` =
         library.refinedPureconfig,
         library.scalapbRuntime,
         library.scalapbRuntimeGrpc,
+        library.debeziumApi,
+        library.debeziumEmbedded,
+        library.debeziumConnectorPostgres,
+        library.debeziumQuarkusOutbox,
         library.logback,
         library.zioTest,
         library.zioTestSbt
@@ -169,6 +179,8 @@ lazy val `subscription-svc` =
         library.scalapbRuntimeGrpc,
         library.zioKafka,
         library.quillPostgres,
+        library.debeziumApi,
+        library.debeziumConnectorPostgres,
         library.randomDataGenerator,
         library.logback,
         library.zioTest,

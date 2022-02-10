@@ -2,9 +2,7 @@ package com.jc.subscription.model.config
 
 import pureconfig.generic.semiauto.deriveReader
 
-final case class KafkaConfig(
-  addresses: Addresses,
-  subscriptionTopic: TopicName)
+final case class KafkaConfig(addresses: Addresses, subscriptionTopic: TopicName)
 
 object KafkaConfig {
   import eu.timepit.refined.pureconfig._

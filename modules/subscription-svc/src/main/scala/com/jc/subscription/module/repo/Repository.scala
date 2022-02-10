@@ -1,12 +1,10 @@
 package com.jc.subscription.module.repo
 
-
 import zio.{UIO, ZIO}
 import zio.logging.Logger
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function.BiConsumer
-
 
 trait Repository[R, ID, E <: Repository.Entity[ID]] {
 
