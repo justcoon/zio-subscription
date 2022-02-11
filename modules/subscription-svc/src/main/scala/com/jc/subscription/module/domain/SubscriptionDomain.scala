@@ -10,9 +10,15 @@ import com.jc.subscription.domain.proto.{
   GetSubscriptionsRes,
   RemoveSubscriptionReq,
   RemoveSubscriptionRes,
+  SubscriptionAddressUpdatedPayload,
   SubscriptionCreatedPayload,
+  SubscriptionEmailUpdatedPayload,
   SubscriptionPayloadEvent,
-  SubscriptionRemovedPayload
+  SubscriptionRemovedPayload,
+  UpdateSubscriptionAddressReq,
+  UpdateSubscriptionAddressRes,
+  UpdateSubscriptionEmailReq,
+  UpdateSubscriptionEmailRes
 }
 import com.jc.subscription.module.db.DbConnection
 import com.jc.subscription.module.db.quill.PostgresDbContext
@@ -29,6 +35,12 @@ object SubscriptionDomain {
 
     def createSubscription(request: com.jc.subscription.domain.proto.CreateSubscriptionReq)
       : zio.ZIO[Any, Throwable, com.jc.subscription.domain.proto.CreateSubscriptionRes]
+
+    def updateSubscriptionAddress(request: com.jc.subscription.domain.proto.UpdateSubscriptionAddressReq)
+      : zio.ZIO[Any, Throwable, com.jc.subscription.domain.proto.UpdateSubscriptionAddressRes]
+
+    def updateSubscriptionEmail(request: com.jc.subscription.domain.proto.UpdateSubscriptionEmailReq)
+      : zio.ZIO[Any, Throwable, com.jc.subscription.domain.proto.UpdateSubscriptionEmailRes]
 
     def removeSubscription(request: com.jc.subscription.domain.proto.RemoveSubscriptionReq)
       : zio.ZIO[Any, Throwable, com.jc.subscription.domain.proto.RemoveSubscriptionRes]
@@ -87,6 +99,51 @@ object SubscriptionDomain {
             _ <- subscriptionEventRepo.insert(event)
           } yield {
             CreateSubscriptionRes(request.id)
+          }
+        }.provideLayer(dbLayer)
+    }
+
+    override def updateSubscriptionAddress(
+      request: UpdateSubscriptionAddressReq): ZIO[Any, Throwable, UpdateSubscriptionAddressRes] = {
+      logger.info(s"updateSubscriptionAddress - id: ${request.id}") *>
+        ctx.transaction {
+          val value = request.address.map(_.transformInto[SubscriptionRepo.Address])
+          val at = Instant.now()
+          for {
+            updated <- subscriptionRepo.updateAddress(request.id, value, Some(at))
+            _ <- ZIO.when(updated) {
+              val eventData = SubscriptionPayloadEvent(
+                request.id,
+                at,
+                SubscriptionPayloadEvent.Payload.AddressUpdated(SubscriptionAddressUpdatedPayload(request.address))
+              )
+              val event = getEventRecord(eventData)
+              subscriptionEventRepo.insert(event)
+            }
+          } yield {
+            UpdateSubscriptionAddressRes(request.id)
+          }
+        }.provideLayer(dbLayer)
+    }
+
+    override def updateSubscriptionEmail(
+      request: UpdateSubscriptionEmailReq): ZIO[Any, Throwable, UpdateSubscriptionEmailRes] = {
+      logger.info(s"updateSubscriptionEmail - id: ${request.id}") *>
+        ctx.transaction {
+          val at = Instant.now()
+          for {
+            updated <- subscriptionRepo.updateEmail(request.id, request.email, Some(at))
+            _ <- ZIO.when(updated) {
+              val eventData = SubscriptionPayloadEvent(
+                request.id,
+                at,
+                SubscriptionPayloadEvent.Payload.EmailUpdated(SubscriptionEmailUpdatedPayload(request.email))
+              )
+              val event = getEventRecord(eventData)
+              subscriptionEventRepo.insert(event)
+            }
+          } yield {
+            UpdateSubscriptionEmailRes(request.id)
           }
         }.provideLayer(dbLayer)
     }

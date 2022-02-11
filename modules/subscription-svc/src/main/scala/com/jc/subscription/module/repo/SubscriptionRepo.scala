@@ -10,7 +10,14 @@ import java.time.Instant
 
 object SubscriptionRepo {
 
-  trait Service[R] extends Repository[R, SubscriptionId, Subscription]
+  trait Service[R] extends Repository[R, SubscriptionId, Subscription] {
+
+    def updateAddress(
+      id: SubscriptionId,
+      address: Option[Address],
+      modifiedAt: Option[Instant]): ZIO[R, Throwable, Boolean]
+    def updateEmail(id: SubscriptionId, email: String, modifiedAt: Option[Instant]): ZIO[R, Throwable, Boolean]
+  }
 
   final case class Address(
     street: String,
@@ -38,11 +45,6 @@ object SubscriptionRepo {
   ) extends Repository.Entity[SubscriptionId]
 
   object Subscription {
-    import shapeless._
-
-    val emailLens: Lens[Subscription, String] = lens[Subscription].email
-    val addressLens: Lens[Subscription, Option[Address]] = lens[Subscription].address
-
     import io.circe._
     import io.circe.generic.semiauto._
     implicit val subscriptionDecoder: Decoder[Subscription] = deriveDecoder[Subscription]
@@ -72,6 +74,35 @@ object SubscriptionRepo {
 
     override def update(value: Subscription): ZIO[DbConnection, Throwable, Boolean] = {
       ctx.run(query.updateValue(lift(value))).map(_ > 0)
+    }
+
+    override def updateAddress(
+      id: SubscriptionId,
+      address: Option[Address],
+      modifiedAt: Option[Instant]): ZIO[DbConnection, Throwable, Boolean] = {
+      ctx
+        .run(
+          query
+            .filter(_.id == lift(id))
+            .update(
+              _.address.map(_.street) -> lift(address.map(_.street)),
+              _.address.map(_.number) -> lift(address.map(_.number)),
+              _.address.map(_.zip) -> lift(address.map(_.zip)),
+              _.address.map(_.city) -> lift(address.map(_.city)),
+              _.address.map(_.state) -> lift(address.map(_.state)),
+              _.address.map(_.country) -> lift(address.map(_.country)),
+              _.modifiedAt -> lift(modifiedAt)
+            ))
+        .map(_ > 0)
+    }
+
+    override def updateEmail(
+      id: SubscriptionId,
+      email: String,
+      modifiedAt: Option[Instant]): ZIO[DbConnection, Throwable, Boolean] = {
+      ctx
+        .run(query.filter(_.id == lift(id)).update(_.email -> lift(email), _.modifiedAt -> lift(modifiedAt)))
+        .map(_ > 0)
     }
 
     override def delete(id: SubscriptionId): ZIO[DbConnection, Throwable, Boolean] = {

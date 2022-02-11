@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "scalapb/scalapb.proto";
+import "validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 
 package com.jc.subscription.domain.proto;
@@ -17,18 +18,14 @@ message Address {
   string zip = 3;
   string city = 4;
   string state = 5;
-  string country = 6;
+  string country = 6 [(validate.rules).string.min_len = 2];
 }
 
 message Subscription {
   string id = 1 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.SubscriptionId"];
   string userId = 2 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.UserId"];
-  string email = 3;
+  string email = 3 [(validate.rules).string.email = true];
   Address address = 4;
-}
-
-message SubscriptionEntityState {
-  Subscription entity = 1;
 }
 
 message SubscriptionPayloadEvent {

@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 import "scalapb/scalapb.proto";
-import "google/protobuf/timestamp.proto";
+import "validate/validate.proto";
 import "SubscriptionEntity.proto";
 package com.jc.subscription.domain.proto;
 
@@ -15,7 +15,7 @@ option (scalapb.options) = {
 message CreateSubscriptionReq {
   string id = 1 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.SubscriptionId"];
   string userId = 2 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.UserId"];
-  string email = 3;
+  string email = 3 [(validate.rules).string.email = true];
   com.jc.subscription.domain.proto.Address address = 4;
 }
 
@@ -26,6 +26,35 @@ message CreateSubscriptionRes {
     string failure = 3;
   }
 }
+
+message UpdateSubscriptionEmailReq {
+  string id = 1 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.SubscriptionId"];
+  string email = 2 [(validate.rules).string.email = true];
+
+}
+
+message UpdateSubscriptionEmailRes {
+  string id = 1 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.SubscriptionId"];
+  oneof result {
+    string success = 2;
+    string failure = 3;
+  }
+}
+
+
+message UpdateSubscriptionAddressReq {
+  string id = 1 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.SubscriptionId"];
+  com.jc.subscription.domain.proto.Address address = 2;
+}
+
+message UpdateSubscriptionAddressRes {
+  string id = 1 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.SubscriptionId"];
+  oneof result {
+    string success = 2;
+    string failure = 3;
+  }
+}
+
 
 message RemoveSubscriptionReq {
   string id = 1 [(scalapb.field).type = "com.jc.subscription.domain.SubscriptionEntity.SubscriptionId"];
@@ -56,6 +85,12 @@ message GetSubscriptionsRes {
 
 service SubscriptionApiService {
   rpc CreateSubscription (CreateSubscriptionReq) returns (CreateSubscriptionRes) {
+  }
+
+  rpc UpdateSubscriptionAddress (UpdateSubscriptionAddressReq) returns (UpdateSubscriptionAddressRes) {
+  }
+
+  rpc UpdateSubscriptionEmail (UpdateSubscriptionEmailReq) returns (UpdateSubscriptionEmailRes) {
   }
 
   rpc RemoveSubscription (RemoveSubscriptionReq) returns (RemoveSubscriptionRes) {

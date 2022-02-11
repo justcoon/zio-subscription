@@ -10,6 +10,8 @@
 
     <logger name="kafka" level="WARN"/>
 
+    <logger name="io.debezium" level="WARN"/>
+
     <logger name="org.http4s.server.middleware" level="WARN"/>
 
     <logger name="org.apache.zookeeper" level="ERROR"/>

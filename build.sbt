@@ -55,6 +55,7 @@ lazy val library =
     val scalapbRuntime =
       "com.thesamet.scalapb" %% "scalapb-runtime"                             % scalapb.compiler.Version.scalapbVersion % "protobuf"
     val scalapbRuntimeGrpc = "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion
+    val scalapbValidate =  "com.thesamet.scalapb" %% "scalapb-validate-core" % scalapb.validate.compiler.BuildInfo.version % "protobuf"
 
     val zioTest = "dev.zio" %% "zio-test"                                      % Versions.zio                 % "test"
     val zioTestSbt = "dev.zio" %% "zio-test-sbt"                               % Versions.zio                 % "test"
@@ -66,7 +67,6 @@ lazy val library =
     val debeziumApi = "io.debezium" % "debezium-api" % Versions.debezium
     val debeziumEmbedded = "io.debezium" % "debezium-embedded" % Versions.debezium
     val debeziumConnectorPostgres = "io.debezium" % "debezium-connector-postgres" % Versions.debezium
-    val debeziumQuarkusOutbox = "io.debezium" % "debezium-quarkus-outbox" % Versions.debezium
   }
 
 lazy val `zio-subscription` =
@@ -112,7 +112,6 @@ lazy val `core` =
         library.debeziumApi,
         library.debeziumEmbedded,
         library.debeziumConnectorPostgres,
-        library.debeziumQuarkusOutbox,
         library.logback,
         library.zioTest,
         library.zioTestSbt
@@ -127,6 +126,7 @@ lazy val `subscription-api` =
       addCompilerPlugin("org.typelevel" %% "kind-projector" % Versions.kindProjector cross CrossVersion.full),
       Compile / PB.targets := Seq(
         scalapb.gen(grpc = true) -> (Compile / sourceManaged).value,
+        scalapb.validate.gen() -> (Compile / sourceManaged).value,
         scalapb.zio_grpc.ZioCodeGenerator -> (Compile / sourceManaged).value
       ),
       PB.protocVersion := "3.17.3" // mac m1 issue
@@ -142,7 +142,8 @@ lazy val `subscription-api` =
         library.circeGeneric,
         library.circeGenericExtras,
         library.scalapbRuntime,
-        library.scalapbRuntimeGrpc
+        library.scalapbRuntimeGrpc,
+        library.scalapbValidate
       )
     )
 
@@ -179,8 +180,6 @@ lazy val `subscription-svc` =
         library.scalapbRuntimeGrpc,
         library.zioKafka,
         library.quillPostgres,
-        library.debeziumApi,
-        library.debeziumConnectorPostgres,
         library.randomDataGenerator,
         library.logback,
         library.zioTest,
