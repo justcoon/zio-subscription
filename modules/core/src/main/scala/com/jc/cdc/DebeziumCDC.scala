@@ -24,7 +24,7 @@ object DebeziumCDC {
     .`with`("database.dbname", "subscription")
 //    .`with`("database.include.list", "subscription")
 //    .`with`("schema.whitelist", "public")
-    .`with`("table.whitelist", "public.subscription_events")
+    .`with`("table.include.list", "public.subscription_events")
 //    .`with`("include.schema.changes", "false")
     .`with`("database.server.id", "1")
     .`with`("database.server.name", "dbserver")

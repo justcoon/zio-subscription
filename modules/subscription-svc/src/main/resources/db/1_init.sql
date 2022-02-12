@@ -15,12 +15,12 @@ CREATE TABLE subscriptions
 
 CREATE INDEX user_id_idx ON subscriptions (user_id);
 
-
 CREATE TABLE subscription_events
 (
     id         varchar(40) PRIMARY KEY,
     entity_id  varchar(40)  NOT NULL,
     type       varchar(100) NOT NULL,
+    sub_type   varchar(100) NOT NULL,
     data       bytea        NOT NULL,
     created_at timestamp    NOT NULL
 );

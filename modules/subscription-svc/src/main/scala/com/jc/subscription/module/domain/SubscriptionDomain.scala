@@ -69,6 +69,7 @@ object SubscriptionDomain {
         java.util.UUID.randomUUID().toString,
         event.entityId,
         event.getClass.getName,
+        event.payload.getClass.getName,
         event.toByteArray,
         event.timestamp)
     }
@@ -93,14 +94,14 @@ object SubscriptionDomain {
               subscriptionRepo.insert(value)
             }
             _ <- ZIO.when(stored.isEmpty) {
-              val eventData = SubscriptionPayloadEvent(
+              val event = SubscriptionPayloadEvent(
                 value.id,
                 value.createdAt,
                 SubscriptionPayloadEvent.Payload.Created(
                   SubscriptionCreatedPayload(value.userId, value.email, value.address.map(_.transformInto[Address])))
               )
-              val event = getEventRecord(eventData)
-              subscriptionEventRepo.insert(event)
+              val eventRecord = getEventRecord(event)
+              subscriptionEventRepo.insert(eventRecord)
             }
           } yield {
             val result = if (stored.isEmpty) {
@@ -120,13 +121,13 @@ object SubscriptionDomain {
           for {
             updated <- subscriptionRepo.updateAddress(request.id, value, Some(at))
             _ <- ZIO.when(updated) {
-              val eventData = SubscriptionPayloadEvent(
+              val event = SubscriptionPayloadEvent(
                 request.id,
                 at,
                 SubscriptionPayloadEvent.Payload.AddressUpdated(SubscriptionAddressUpdatedPayload(request.address))
               )
-              val event = getEventRecord(eventData)
-              subscriptionEventRepo.insert(event)
+              val eventRecord = getEventRecord(event)
+              subscriptionEventRepo.insert(eventRecord)
             }
           } yield {
             val result = if (updated) {
@@ -145,12 +146,12 @@ object SubscriptionDomain {
           for {
             updated <- subscriptionRepo.updateEmail(request.id, request.email, Some(at))
             _ <- ZIO.when(updated) {
-              val eventData = SubscriptionPayloadEvent(
+              val eventRecord = SubscriptionPayloadEvent(
                 request.id,
                 at,
                 SubscriptionPayloadEvent.Payload.EmailUpdated(SubscriptionEmailUpdatedPayload(request.email))
               )
-              val event = getEventRecord(eventData)
+              val event = getEventRecord(eventRecord)
               subscriptionEventRepo.insert(event)
             }
           } yield {
@@ -168,13 +169,13 @@ object SubscriptionDomain {
           for {
             deleted <- subscriptionRepo.delete(request.id)
             _ <- ZIO.when(deleted) {
-              val eventData = SubscriptionPayloadEvent(
+              val event = SubscriptionPayloadEvent(
                 request.id,
                 Instant.now(),
                 SubscriptionPayloadEvent.Payload.Removed(SubscriptionRemovedPayload())
               )
-              val event = getEventRecord(eventData)
-              subscriptionEventRepo.insert(event)
+              val eventRecord = getEventRecord(event)
+              subscriptionEventRepo.insert(eventRecord)
             }
           } yield {
             val result = if (deleted) {

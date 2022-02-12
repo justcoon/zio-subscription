@@ -69,7 +69,7 @@ object SubscriptionRepo {
     }
 
     override def insert(value: Subscription): ZIO[DbConnection, Throwable, Boolean] = {
-      ctx.run(query.insertValue(lift(value))).map(_ => true)
+      ctx.run(query.insertValue(lift(value))).map(_ > 0)
     }
 
     override def update(value: Subscription): ZIO[DbConnection, Throwable, Boolean] = {

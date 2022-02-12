@@ -18,6 +18,7 @@ object SubscriptionEventRepo {
     id: String,
     entityId: SubscriptionId,
     `type`: String,
+    subType: String,
     data: Array[Byte],
     createdAt: Instant
   ) extends Repository.Entity[String]
@@ -31,12 +32,13 @@ object SubscriptionEventRepo {
         id <- c.downField("id").as[String]
         entityId <- c.downField("entity_id").as[SubscriptionId]
         tpe <- c.downField("type").as[String]
+        stpe <- c.downField("sub_type").as[String]
         d <- c.downField("data").as[String]
         at <- c.downField("created_at").as[Long]
       } yield {
         val data = Base64.getDecoder.decode(d)
         val createdAt = Instant.ofEpochMilli(at / 1000)
-        SubscriptionEventRepo.SubscriptionEvent(id, entityId, tpe, data, createdAt)
+        SubscriptionEventRepo.SubscriptionEvent(id, entityId, tpe, stpe, data, createdAt)
       }
   }
 
@@ -50,7 +52,7 @@ object SubscriptionEventRepo {
     }
 
     override def insert(value: SubscriptionEvent): ZIO[DbConnection, Throwable, Boolean] = {
-      ctx.run(query.insertValue(lift(value))).map(_ => true)
+      ctx.run(query.insertValue(lift(value))).map(_ > 0)
     }
   }
 
