@@ -86,19 +86,27 @@ object SubscriptionDomain {
       logger.info(s"createSubscription - id: ${request.id}") *>
         ctx.transaction {
           val value = request.into[SubscriptionRepo.Subscription].withFieldConst(_.createdAt, Instant.now()).transform
-          val eventData = SubscriptionPayloadEvent(
-            value.id,
-            value.createdAt,
-            SubscriptionPayloadEvent.Payload.Created(
-              SubscriptionCreatedPayload(value.userId, value.email, value.address.map(_.transformInto[Address])))
-          )
-          val event = getEventRecord(eventData)
 
           for {
-            _ <- subscriptionRepo.insert(value)
-            _ <- subscriptionEventRepo.insert(event)
+            stored <- subscriptionRepo.find(value.id)
+            _ <- ZIO.when(stored.isEmpty) {
+              subscriptionRepo.insert(value)
+            }
+            _ <- ZIO.when(stored.isEmpty) {
+              val eventData = SubscriptionPayloadEvent(
+                value.id,
+                value.createdAt,
+                SubscriptionPayloadEvent.Payload.Created(
+                  SubscriptionCreatedPayload(value.userId, value.email, value.address.map(_.transformInto[Address])))
+              )
+              val event = getEventRecord(eventData)
+              subscriptionEventRepo.insert(event)
+            }
           } yield {
-            CreateSubscriptionRes(request.id)
+            val result = if (stored.isEmpty) {
+              CreateSubscriptionRes.Result.Success("Subscription created")
+            } else CreateSubscriptionRes.Result.Failure("Subscription already exist")
+            CreateSubscriptionRes(request.id, result)
           }
         }.provideLayer(dbLayer)
     }
@@ -121,7 +129,10 @@ object SubscriptionDomain {
               subscriptionEventRepo.insert(event)
             }
           } yield {
-            UpdateSubscriptionAddressRes(request.id)
+            val result = if (updated) {
+              UpdateSubscriptionAddressRes.Result.Success("Subscription address updated")
+            } else UpdateSubscriptionAddressRes.Result.Failure("Subscription not found")
+            UpdateSubscriptionAddressRes(request.id, result)
           }
         }.provideLayer(dbLayer)
     }
@@ -143,7 +154,10 @@ object SubscriptionDomain {
               subscriptionEventRepo.insert(event)
             }
           } yield {
-            UpdateSubscriptionEmailRes(request.id)
+            val result = if (updated) {
+              UpdateSubscriptionEmailRes.Result.Success("Subscription email updated")
+            } else UpdateSubscriptionEmailRes.Result.Failure("Subscription not found")
+            UpdateSubscriptionEmailRes(request.id, result)
           }
         }.provideLayer(dbLayer)
     }
@@ -163,7 +177,10 @@ object SubscriptionDomain {
               subscriptionEventRepo.insert(event)
             }
           } yield {
-            RemoveSubscriptionRes(request.id)
+            val result = if (deleted) {
+              RemoveSubscriptionRes.Result.Success("Subscription deleted")
+            } else RemoveSubscriptionRes.Result.Failure("Subscription not found")
+            RemoveSubscriptionRes(request.id, result)
           }
         }.provideLayer(dbLayer)
     }

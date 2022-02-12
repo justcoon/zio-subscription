@@ -62,8 +62,14 @@ object SubscriptionGrpcApiHandler {
       request: CreateSubscriptionReq): ZIO[Any with Has[RequestContext], Status, CreateSubscriptionRes] = {
       for {
         _ <- authenticated
-        _ <- validated(request).mapError(toStatus)
-        res <- subscriptionService.createSubscription(request).mapError(toInternalStatus)
+        res <- validated(request).foldM(
+          e =>
+            ZIO.succeed(
+              CreateSubscriptionRes(
+                request.id,
+                CreateSubscriptionRes.Result.Failure(s"Subscription create error (${getValidationMessage(e)})"))),
+          _ => subscriptionService.createSubscription(request).mapError(toInternalStatus)
+        )
       } yield res
     }
 
@@ -71,8 +77,15 @@ object SubscriptionGrpcApiHandler {
       request: UpdateSubscriptionEmailReq): ZIO[Any with Has[RequestContext], Status, UpdateSubscriptionEmailRes] = {
       for {
         _ <- authenticated
-        _ <- validated(request).mapError(toStatus)
-        res <- subscriptionService.updateSubscriptionEmail(request).mapError(toInternalStatus)
+        res <- validated(request).foldM(
+          e =>
+            ZIO.succeed(
+              UpdateSubscriptionEmailRes(
+                request.id,
+                UpdateSubscriptionEmailRes.Result.Failure(
+                  s"Subscription email update error (${getValidationMessage(e)})"))),
+          _ => subscriptionService.updateSubscriptionEmail(request).mapError(toInternalStatus)
+        )
       } yield res
     }
 
@@ -80,8 +93,15 @@ object SubscriptionGrpcApiHandler {
       : ZIO[Any with Has[RequestContext], Status, UpdateSubscriptionAddressRes] = {
       for {
         _ <- authenticated
-        _ <- validated(request).mapError(toStatus)
-        res <- subscriptionService.updateSubscriptionAddress(request).mapError(toInternalStatus)
+        res <- validated(request).foldM(
+          e =>
+            ZIO.succeed(
+              UpdateSubscriptionAddressRes(
+                request.id,
+                UpdateSubscriptionAddressRes.Result.Failure(
+                  s"Subscription address update error (${getValidationMessage(e)})"))),
+          _ => subscriptionService.updateSubscriptionAddress(request).mapError(toInternalStatus)
+        )
       } yield res
     }
 
