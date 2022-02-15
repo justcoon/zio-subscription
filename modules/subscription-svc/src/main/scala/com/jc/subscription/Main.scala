@@ -44,20 +44,29 @@ object Main extends App {
     } yield prometheusServer
   }
 
-  private def handler(event: ChangeEvent[String, String]) = {
-    val e = DebeziumCDC
-      .getChangeEventPayload(event)
-      .toRight("N/A")
-      .flatMap { json =>
-        json.as(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder)
+  private def handler(events: Chunk[ChangeEvent[String, String]]) = {
+    val es =
+      events.map { event =>
+        DebeziumCDC
+          .getChangeEventPayload(event)
+          .toRight("N/A")
+          .flatMap { json =>
+            json.as(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder)
+          }
+      }.collect { case Right(e) =>
+        e
       }
+
+    val errors = events.size - es.size
+
     for {
       logger <- ZIO.service[Logger[String]]
       producer <- ZIO.service[SubscriptionEventProducer.Service]
-      _ <- e match {
-        case Right(e) => logger.debug(s"sending event: ${e}") *> producer.send(e)
-        case Left(e) => logger.debug(s"sending event error: ${e}")
+      _ <- logger.debug(s"sending events: ${es.mkString(",")}")
+      _ <- ZIO.when(errors > 0) {
+        logger.warn(s"sending events errors: ${errors}")
       }
+      _ <- producer.send(es)
     } yield ()
   }
 
