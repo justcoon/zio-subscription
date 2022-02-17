@@ -1,10 +1,11 @@
-package com.jc.cdc
+package com.jc.cdc.debezium
 
+import io.circe
 import io.debezium.config.Configuration
 import io.debezium.engine.format.Json
 import io.debezium.engine.{ChangeEvent, DebeziumEngine}
 import zio.blocking.Blocking
-import zio.{Chunk, URIO, ZIO, ZManaged}
+import zio.{Chunk, ZIO, ZManaged}
 
 import scala.util.{Failure, Success, Try}
 
@@ -32,22 +33,25 @@ object DebeziumCDC {
     .`with`("database.history.file.filename", "/tmp/dbhistory.dat")
     .build
 
-  def getChangeEventPayload(event: ChangeEvent[String, String]): Option[io.circe.Json] = {
+  def getChangeEventPayload[T](event: ChangeEvent[String, String])(implicit
+    decoder: io.circe.Decoder[T]): Either[circe.Error, T] = {
     import io.circe.parser._
-    parse(event.value()).toOption.flatMap { json =>
-      json.hcursor.downField("payload").downField("after").focus
+    parse(event.value()).flatMap { json =>
+      json.hcursor.downField("payload").downField("after").as[T]
     }
   }
 
-  def create[R](handler: Chunk[ChangeEvent[String, String]] => ZIO[R, Throwable, Unit])
-    : ZManaged[Blocking with R, Throwable, DebeziumEngine[ChangeEvent[String, String]]] = {
+  def create[R](
+    handler: Chunk[ChangeEvent[String, String]] => ZIO[R, Throwable, Unit],
+    config: Configuration): ZManaged[Blocking with R, Throwable, DebeziumEngine[ChangeEvent[String, String]]] = {
     val engine = for {
       r <- ZIO.runtime[R]
       b <- ZIO.service[Blocking.Service]
       engine <- ZIO.fromTry {
-        createEngine { events =>
-          r.unsafeRunSync(handler(events)).toEither.toTry
-        }
+        val h: Chunk[ChangeEvent[String, String]] => Try[Unit] =
+          events => r.unsafeRunSync(handler(events)).toEither.toTry
+
+        createEngine(h, config)
       }
     } yield {
       b.blockingExecutor.submitOrThrow(engine)
@@ -71,10 +75,9 @@ object DebeziumCDC {
     }
   }
 
-  def createEngine(handler: Chunk[ChangeEvent[String, String]] => Try[Unit]) = {
+  def createEngine(handler: Chunk[ChangeEvent[String, String]] => Try[Unit], config: Configuration) = {
     Try {
       val consumer = createChangeConsumer(handler)
-      val config = connectorConfiguration()
 
       val engine: DebeziumEngine[ChangeEvent[String, String]] = DebeziumEngine
         .create(classOf[Json])

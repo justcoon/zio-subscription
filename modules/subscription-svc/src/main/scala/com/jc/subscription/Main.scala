@@ -3,7 +3,7 @@ package com.jc.subscription
 import com.jc.subscription.model.config.{AppConfig, PrometheusConfig}
 import com.jc.subscription.module.api.{GrpcApiServer, HttpApiServer, SubscriptionGrpcApiHandler}
 import com.jc.auth.JwtAuthenticator
-import com.jc.cdc.DebeziumCDC
+import com.jc.cdc.CDCHandler
 import com.jc.logging.{LogbackLoggingSystem, LoggingSystem}
 import com.jc.logging.api.{LoggingSystemGrpcApi, LoggingSystemGrpcApiHandler}
 import com.jc.subscription.domain.proto.SubscriptionPayloadEvent
@@ -44,29 +44,19 @@ object Main extends App {
     } yield prometheusServer
   }
 
-  private def handler(events: Chunk[ChangeEvent[String, String]]) = {
-    val es =
-      events.map { event =>
-        DebeziumCDC
-          .getChangeEventPayload(event)
-          .toRight("N/A")
-          .flatMap { json =>
-            json.as(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder)
-          }
-      }.collect { case Right(e) =>
-        e
-      }
+  private def handler(events: Chunk[Either[Throwable, SubscriptionEventRepo.SubscriptionEvent]]) = {
+    val validEvents = events.collect { case Right(e) => e }
 
-    val errors = events.size - es.size
+    val errors = events.size - validEvents.size
 
     for {
       logger <- ZIO.service[Logger[String]]
       producer <- ZIO.service[SubscriptionEventProducer.Service]
-      _ <- logger.debug(s"sending events: ${es.mkString(",")}")
+      _ <- logger.debug(s"sending events: ${validEvents.mkString(",")}")
       _ <- ZIO.when(errors > 0) {
         logger.warn(s"sending events errors: ${errors}")
       }
-      _ <- producer.send(es)
+      _ <- producer.send(validEvents)
     } yield ()
   }
 
@@ -88,7 +78,7 @@ object Main extends App {
       SubscriptionEventProducer.create(appConfig.kafka.subscriptionTopic),
       HttpApiServer.create(appConfig.restApi),
       GrpcApiServer.create(appConfig.grpcApi),
-      DebeziumCDC.create(handler).toLayer,
+      CDCHandler.create(handler)(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder).toLayer,
       Registry.live,
       Exporters.live
     )
