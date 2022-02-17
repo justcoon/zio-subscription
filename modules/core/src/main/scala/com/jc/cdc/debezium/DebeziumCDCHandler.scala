@@ -55,7 +55,7 @@ object DebeziumCDCHandler {
         import scala.jdk.CollectionConverters._
         val events = records.asScala
         handler(Chunk.fromIterable(events)) match {
-          case Success(_) => events.foreach(committer.markProcessed)
+          case Success(_) => committer.markBatchFinished()//events.foreach(committer.markProcessed)
           case Failure(e) => throw new InterruptedException(e.getMessage)
         }
       }
