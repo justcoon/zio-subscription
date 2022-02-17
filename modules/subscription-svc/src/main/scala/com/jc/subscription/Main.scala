@@ -6,7 +6,6 @@ import com.jc.auth.JwtAuthenticator
 import com.jc.cdc.CDCHandler
 import com.jc.logging.{LogbackLoggingSystem, LoggingSystem}
 import com.jc.logging.api.{LoggingSystemGrpcApi, LoggingSystemGrpcApiHandler}
-import com.jc.subscription.domain.proto.SubscriptionPayloadEvent
 import com.jc.subscription.module.db.DbConnection
 import com.jc.subscription.module.domain.SubscriptionDomain
 import com.jc.subscription.module.event.SubscriptionEventProducer
@@ -25,7 +24,6 @@ import zio.metrics.prometheus.helpers._
 import scalapb.zio_grpc.{Server => GrpcServer}
 import org.http4s.server.{Server => HttpServer}
 import eu.timepit.refined.auto._
-import io.debezium.engine.{ChangeEvent, DebeziumEngine}
 import zio.magic._
 
 object Main extends App {
@@ -34,7 +32,7 @@ object Main extends App {
     with Console with Blocking with JwtAuthenticator with DbConnection with SubscriptionRepo with SubscriptionEventRepo
     with SubscriptionDomain with SubscriptionEventProducer with LoggingSystem with LoggingSystemGrpcApiHandler
     with SubscriptionGrpcApiHandler with GrpcServer with Has[HttpServer] with Logging with Registry with Exporters
-    with Has[DebeziumEngine[ChangeEvent[String, String]]]
+    with CDCHandler
 
   private def metrics(config: PrometheusConfig): ZIO[AppEnvironment, Throwable, PrometheusHttpServer] = {
     for {

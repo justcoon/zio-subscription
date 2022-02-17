@@ -5,11 +5,12 @@ import io.debezium.config.Configuration
 import io.debezium.engine.format.Json
 import io.debezium.engine.{ChangeEvent, DebeziumEngine}
 import zio.blocking.Blocking
-import zio.{Chunk, ZIO, ZManaged}
+import zio.{Chunk, Task, ZIO, ZManaged}
+import com.jc.cdc.CDCHandler
 
 import scala.util.{Failure, Success, Try}
 
-object DebeziumCDC {
+object DebeziumCDCHandler {
 
   def connectorConfiguration(): Configuration = Configuration.create
     .`with`("name", "subscription-outbox-connector")
@@ -33,34 +34,20 @@ object DebeziumCDC {
     .`with`("database.history.file.filename", "/tmp/dbhistory.dat")
     .build
 
-  def getChangeEventPayload[T](event: ChangeEvent[String, String])(implicit
-    decoder: io.circe.Decoder[T]): Either[circe.Error, T] = {
-    import io.circe.parser._
-    parse(event.value()).flatMap { json =>
-      json.hcursor.downField("payload").downField("after").as[T]
+  final private class DebeziumService(engine: DebeziumEngine[ChangeEvent[String, String]], blocking: Blocking.Service)
+      extends CDCHandler.Service {
+
+    override def start: Task[Unit] = {
+      Task.effect(blocking.blockingExecutor.submitOrThrow(engine))
     }
+
+    override def shutdown: Task[Unit] = {
+      Task.effect(engine.close()).unit
+    }
+
   }
 
-  def create[R](
-    handler: Chunk[ChangeEvent[String, String]] => ZIO[R, Throwable, Unit],
-    config: Configuration): ZManaged[Blocking with R, Throwable, DebeziumEngine[ChangeEvent[String, String]]] = {
-    val engine = for {
-      r <- ZIO.runtime[R]
-      b <- ZIO.service[Blocking.Service]
-      engine <- ZIO.fromTry {
-        val h: Chunk[ChangeEvent[String, String]] => Try[Unit] =
-          events => r.unsafeRunSync(handler(events)).toEither.toTry
-
-        createEngine(h, config)
-      }
-    } yield {
-      b.blockingExecutor.submitOrThrow(engine)
-      engine
-    }
-    engine.toManaged(engine => ZIO.effect(engine.close()).ignore)
-  }
-
-  def createChangeConsumer(handler: Chunk[ChangeEvent[String, String]] => Try[Unit]) = {
+  private def createChangeConsumer(handler: Chunk[ChangeEvent[String, String]] => Try[Unit]) = {
     new io.debezium.engine.DebeziumEngine.ChangeConsumer[ChangeEvent[String, String]] {
       override def handleBatch(
         records: java.util.List[ChangeEvent[String, String]],
@@ -75,7 +62,7 @@ object DebeziumCDC {
     }
   }
 
-  def createEngine(handler: Chunk[ChangeEvent[String, String]] => Try[Unit], config: Configuration) = {
+  private def createEngine(handler: Chunk[ChangeEvent[String, String]] => Try[Unit], config: Configuration) = {
     Try {
       val consumer = createChangeConsumer(handler)
 
@@ -88,4 +75,29 @@ object DebeziumCDC {
       engine
     }
   }
+
+  def create[R](
+    handler: Chunk[ChangeEvent[String, String]] => ZIO[R, Throwable, Unit],
+    config: Configuration): ZManaged[Blocking with R, Throwable, CDCHandler.Service] = {
+    val engine = for {
+      r <- ZIO.runtime[R]
+      b: Blocking.Service <- ZIO.service[Blocking.Service]
+      engine <- ZIO.fromTry {
+        val h: Chunk[ChangeEvent[String, String]] => Try[Unit] =
+          events => r.unsafeRunSync(handler(events)).toEither.toTry
+
+        createEngine(h, config).map(engine => new DebeziumService(engine, b))
+      }
+    } yield engine
+    engine.flatMap(s => s.start.as(s)).toManaged(s => s.shutdown.ignore)
+  }
+
+  def getChangeEventPayload[T](event: ChangeEvent[String, String])(implicit
+    decoder: io.circe.Decoder[T]): Either[circe.Error, T] = {
+    import io.circe.parser._
+    parse(event.value()).flatMap { json =>
+      json.hcursor.downField("payload").downField("after").as[T]
+    }
+  }
+
 }
