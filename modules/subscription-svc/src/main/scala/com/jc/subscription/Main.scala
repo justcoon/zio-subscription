@@ -6,7 +6,8 @@ import com.jc.auth.JwtAuthenticator
 import com.jc.cdc.CDCHandler
 import com.jc.logging.{LogbackLoggingSystem, LoggingSystem}
 import com.jc.logging.api.{LoggingSystemGrpcApi, LoggingSystemGrpcApiHandler}
-import com.jc.subscription.module.db.DbConnection
+import com.jc.subscription.module.db.cdc.PostgresCDC
+import com.jc.subscription.module.db.{DbConfig, DbConnection}
 import com.jc.subscription.module.domain.SubscriptionDomain
 import com.jc.subscription.module.event.SubscriptionEventProducer
 import com.jc.subscription.module.kafka.KafkaProducer
@@ -29,10 +30,10 @@ import zio.magic._
 object Main extends App {
 
   type AppEnvironment = Clock
-    with Console with Blocking with JwtAuthenticator with DbConnection with SubscriptionRepo with SubscriptionEventRepo
-    with SubscriptionDomain with SubscriptionEventProducer with LoggingSystem with LoggingSystemGrpcApiHandler
-    with SubscriptionGrpcApiHandler with GrpcServer with Has[HttpServer] with Logging with Registry with Exporters
-    with CDCHandler
+    with Console with Blocking with JwtAuthenticator with DbConfig with DbConnection with SubscriptionRepo
+    with SubscriptionEventRepo with SubscriptionDomain with SubscriptionEventProducer with LoggingSystem
+    with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler with GrpcServer with Has[HttpServer] with Logging
+    with Registry with Exporters with CDCHandler
 
   private def metrics(config: PrometheusConfig): ZIO[AppEnvironment, Throwable, PrometheusHttpServer] = {
     for {
@@ -65,6 +66,7 @@ object Main extends App {
       Blocking.live,
       Slf4jLogger.make((_, message) => message),
       JwtAuthenticator.live(appConfig.jwt),
+      DbConfig.create(),
       DbConnection.live,
       SubscriptionRepo.live,
       SubscriptionEventRepo.live,
@@ -76,7 +78,7 @@ object Main extends App {
       SubscriptionEventProducer.create(appConfig.kafka.subscriptionTopic),
       HttpApiServer.create(appConfig.restApi),
       GrpcApiServer.create(appConfig.grpcApi),
-      CDCHandler.create(handler)(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder).toLayer,
+      PostgresCDC.create(handler),
       Registry.live,
       Exporters.live
     )

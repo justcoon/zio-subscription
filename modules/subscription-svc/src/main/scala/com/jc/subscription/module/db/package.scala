@@ -1,8 +1,10 @@
 package com.jc.subscription.module
 
-import io.getquill.context.zio.ZioJAsyncConnection
+import com.github.jasync.sql.db.postgresql.PostgreSQLConnection
+import io.getquill.context.zio.{JAsyncContextConfig, ZioJAsyncConnection}
 import zio.Has
 
 package object db {
+  type DbConfig = Has[JAsyncContextConfig[PostgreSQLConnection]]
   type DbConnection = Has[ZioJAsyncConnection]
 }

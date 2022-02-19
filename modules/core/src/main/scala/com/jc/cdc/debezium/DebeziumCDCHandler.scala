@@ -5,34 +5,12 @@ import io.debezium.config.Configuration
 import io.debezium.engine.format.Json
 import io.debezium.engine.{ChangeEvent, DebeziumEngine}
 import zio.blocking.Blocking
-import zio.{Chunk, Task, ZIO, ZManaged}
+import zio.{Chunk, Has, Task, ZIO, ZManaged}
 import com.jc.cdc.CDCHandler
 
 import scala.util.{Failure, Success, Try}
 
 object DebeziumCDCHandler {
-
-  def connectorConfiguration(): Configuration = Configuration.create
-    .`with`("name", "subscription-outbox-connector")
-    .`with`("connector.class", "io.debezium.connector.postgresql.PostgresConnector")
-//    .`with`("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore")
-    .`with`("offset.storage.file.filename", "/tmp/offsets.dat")
-    .`with`("offset.flush.interval.ms", "60000")
-    .`with`("database.hostname", "localhost")
-    .`with`("plugin.name", "pgoutput")
-    .`with`("database.port", "5432")
-    .`with`("database.user", "postgres")
-    .`with`("database.password", "1234")
-    .`with`("database.dbname", "subscription")
-//    .`with`("database.include.list", "subscription")
-//    .`with`("schema.whitelist", "public")
-    .`with`("table.include.list", "public.subscription_events")
-//    .`with`("include.schema.changes", "false")
-    .`with`("database.server.id", "1")
-    .`with`("database.server.name", "dbserver")
-    .`with`("database.history", "io.debezium.relational.history.FileDatabaseHistory")
-    .`with`("database.history.file.filename", "/tmp/dbhistory.dat")
-    .build
 
   final private class DebeziumService(engine: DebeziumEngine[ChangeEvent[String, String]], blocking: Blocking.Service)
       extends CDCHandler.Service {
@@ -55,7 +33,7 @@ object DebeziumCDCHandler {
         import scala.jdk.CollectionConverters._
         val events = records.asScala
         handler(Chunk.fromIterable(events)) match {
-          case Success(_) => committer.markBatchFinished()//events.foreach(committer.markProcessed)
+          case Success(_) => committer.markBatchFinished() //events.foreach(committer.markProcessed)
           case Failure(e) => throw new InterruptedException(e.getMessage)
         }
       }
@@ -77,16 +55,17 @@ object DebeziumCDCHandler {
   }
 
   def create[R](
-    handler: Chunk[ChangeEvent[String, String]] => ZIO[R, Throwable, Unit],
-    config: Configuration): ZManaged[Blocking with R, Throwable, CDCHandler.Service] = {
+    handler: Chunk[ChangeEvent[String, String]] => ZIO[R, Throwable, Unit]
+  ): ZManaged[Has[Configuration] with Blocking with R, Throwable, CDCHandler.Service] = {
     val engine = for {
       r <- ZIO.runtime[R]
-      b: Blocking.Service <- ZIO.service[Blocking.Service]
+      c <- ZIO.service[Configuration]
+      b <- ZIO.service[Blocking.Service]
       engine <- ZIO.fromTry {
         val h: Chunk[ChangeEvent[String, String]] => Try[Unit] =
           events => r.unsafeRunSync(handler(events)).toEither.toTry
 
-        createEngine(h, config).map(engine => new DebeziumService(engine, b))
+        createEngine(h, c).map(engine => new DebeziumService(engine, b))
       }
     } yield engine
     engine.flatMap(s => s.start.as(s)).toManaged(s => s.shutdown.ignore)
