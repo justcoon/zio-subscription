@@ -17,6 +17,6 @@ object DbConfig {
       PostgresJAsyncContextConfig(c)
     }
 
-  def create(cfgNamespace: String = "db"): ZLayer[Any, Nothing, DbConfig] =
+  def create(cfgNamespace: String = "db.connection"): ZLayer[Any, Nothing, DbConfig] =
     getConfig(cfgNamespace).toLayer
 }

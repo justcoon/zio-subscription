@@ -18,14 +18,14 @@ import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.console.Console
 import zio.logging.slf4j.Slf4jLogger
-import zio.logging.{Logger, Logging}
+import zio.logging.Logging
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.exporters.Exporters
 import zio.metrics.prometheus.helpers._
+import zio.magic._
 import scalapb.zio_grpc.{Server => GrpcServer}
 import org.http4s.server.{Server => HttpServer}
 import eu.timepit.refined.auto._
-import zio.magic._
 
 object Main extends App {
 
@@ -41,22 +41,6 @@ object Main extends App {
       _ <- initializeDefaultExports(registry)
       prometheusServer <- http(registry, config.port)
     } yield prometheusServer
-  }
-
-  private def handler(events: Chunk[Either[Throwable, SubscriptionEventRepo.SubscriptionEvent]]) = {
-    val validEvents = events.collect { case Right(e) => e }
-
-    val errors = events.size - validEvents.size
-
-    for {
-      logger <- ZIO.service[Logger[String]]
-      producer <- ZIO.service[SubscriptionEventProducer.Service]
-      _ <- logger.debug(s"sending events: ${validEvents.mkString(",")}")
-      _ <- ZIO.when(errors > 0) {
-        logger.warn(s"sending events errors: ${errors}")
-      }
-      _ <- producer.send(validEvents)
-    } yield ()
   }
 
   private def createAppLayer(appConfig: AppConfig): ZLayer[Any, Throwable, AppEnvironment] = {
@@ -78,7 +62,7 @@ object Main extends App {
       SubscriptionEventProducer.create(appConfig.kafka.subscriptionTopic),
       HttpApiServer.create(appConfig.restApi),
       GrpcApiServer.create(appConfig.grpcApi),
-      PostgresCDC.create(handler),
+      PostgresCDC.create(SubscriptionEventProducer.processAndSend),
       Registry.live,
       Exporters.live
     )

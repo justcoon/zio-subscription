@@ -210,12 +210,4 @@ object SubscriptionDomain {
     }
     res.toLayer
   }
-
-  //  def find(id: SubscriptionId): ZIO[SubscriptionDomain, Throwable, Option[Subscription]] = {
-  //    ZIO.service[SubscriptionDomain.Service].flatMap(_.find(id))
-  //  }
-  //
-  //  def findAll(): ZIO[SubscriptionDomain, Throwable, Seq[Subscription]] = {
-  //    ZIO.service[SubscriptionDomain.Service].flatMap(_.findAll())
-  //  }
 }

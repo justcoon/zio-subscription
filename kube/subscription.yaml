@@ -63,7 +63,7 @@ spec:
               value: "kafka-kafka-brokers:9092"
           volumeMounts:
             - name: subscription-svc-data
-              mountPath: /kafka-streams
+              mountPath: /cdc
   volumeClaimTemplates:
     - metadata:
         name: subscription-svc-data
