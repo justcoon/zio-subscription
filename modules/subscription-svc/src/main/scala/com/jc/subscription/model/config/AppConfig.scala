@@ -11,7 +11,8 @@ final case class AppConfig(
   grpcApi: HttpApiConfig,
   restApi: HttpApiConfig,
   prometheus: PrometheusConfig,
-  jwt: JwtConfig)
+  jwt: JwtConfig,
+  db: DbConfig)
 
 object AppConfig {
   implicit lazy val appConfigReader = deriveReader[AppConfig]

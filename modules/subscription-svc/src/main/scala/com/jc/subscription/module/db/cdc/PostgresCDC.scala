@@ -1,27 +1,28 @@
 package com.jc.subscription.module.db.cdc
 
-import com.github.jasync.sql.db.postgresql.PostgreSQLConnection
 import com.jc.cdc.CDCHandler
-import com.jc.subscription.module.db.DbConfig
+import com.jc.subscription.model.config.DbConfig
 import com.jc.subscription.module.repo.SubscriptionEventRepo
 import io.debezium.config.Configuration
-import io.getquill.context.zio.JAsyncContextConfig
-import zio.{Chunk, Has, ZIO, ZLayer, ZManaged}
+import zio.{Chunk, ZIO, ZLayer}
 import zio.blocking.Blocking
 
 object PostgresCDC {
 
-  def getConfig(connectionConfig: JAsyncContextConfig[PostgreSQLConnection]): Configuration = {
-    val poolConfig = connectionConfig.connectionPoolConfiguration
+  // https://debezium.io/documentation/reference/1.8/development/engine.html#_in_the_code
+  def getConfig(dbConfig: DbConfig): Configuration = {
+    val poolConfig = dbConfig.connection.connectionPoolConfiguration
     val tables = "subscription_events" :: Nil
     val schema = "public"
     val tablesInclude = tables.map(table => s"$schema.$table").mkString(",")
-
+    val offsetStoreFilename = s"${dbConfig.cdc.offsetStoreDir}/subscription-offsets.dat"
+    val dbHistoryFilename = s"${dbConfig.cdc.offsetStoreDir}/subscription-dbhistory.dat"
     Configuration.create
       .`with`("name", "subscription-outbox-connector")
       .`with`("connector.class", "io.debezium.connector.postgresql.PostgresConnector")
-      .`with`("offset.storage.file.filename", "/tmp/offsets.dat")
-      .`with`("offset.flush.interval.ms", "60000")
+      .`with`("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore")
+      .`with`("offset.storage.file.filename", offsetStoreFilename)
+      .`with`("offset.flush.interval.ms", "5000")
       .`with`("database.hostname", poolConfig.getHost)
       .`with`("plugin.name", "pgoutput")
       .`with`("database.port", poolConfig.getPort)
@@ -31,21 +32,18 @@ object PostgresCDC {
       .`with`("table.include.list", tablesInclude)
       .`with`("database.server.id", "1")
       .`with`("database.server.name", "dbserver")
+      .`with`("database.history", "io.debezium.relational.history.FileDatabaseHistory")
+      .`with`("database.history.file.filename", dbHistoryFilename)
       .build
   }
 
-  def create[R <: Has[_]](
+  def create[R](
+    dbConfig: DbConfig,
     handler: Chunk[Either[Throwable, SubscriptionEventRepo.SubscriptionEvent]] => ZIO[R, Throwable, Unit])
-    : ZLayer[DbConfig with Blocking with R, Throwable, CDCHandler] = {
-
-    val cdc = for {
-      dbConfig <- ZManaged.service[JAsyncContextConfig[PostgreSQLConnection]]
-      configLayer = ZLayer.succeed(getConfig(dbConfig))
-      cdc <- CDCHandler
-        .create(handler)(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder)
-        .provideSomeLayer[Blocking with R](configLayer)
-    } yield cdc
-
+    : ZLayer[Blocking with R, Throwable, CDCHandler] = {
+    val typeHandler = CDCHandler.postgresTypeHandler(handler)(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder)
+    val configLayer = ZLayer.succeed(getConfig(dbConfig))
+    val cdc = CDCHandler.create(typeHandler).provideSomeLayer[Blocking with R](configLayer)
     cdc.toLayer
   }
 }
