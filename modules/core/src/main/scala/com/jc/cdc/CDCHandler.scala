@@ -13,15 +13,15 @@ object CDCHandler {
     def shutdown: Task[Unit]
   }
 
-  def typeHandler[R, T](handler: Chunk[Either[Throwable, T]] => ZIO[R, Throwable, Unit])(implicit
+  def postgresTypeHandler[R, T](handler: Chunk[Either[Throwable, T]] => ZIO[R, Throwable, Unit])(implicit
     decoder: io.circe.Decoder[T]): Chunk[ChangeEvent[String, String]] => ZIO[R, Throwable, Unit] = { events =>
-    val typeEvents = events.map(DebeziumCDCHandler.getChangeEventPayload[T])
+    val typeEvents = events.map(DebeziumCDCHandler.getPostgresChangeEventPayload[T])
     handler(typeEvents)
   }
 
-  def create[R, T](handler: Chunk[Either[Throwable, T]] => ZIO[R, Throwable, Unit])(implicit
-    decoder: io.circe.Decoder[T]): ZManaged[Has[Configuration] with Blocking with R, Throwable, Service] = {
-    DebeziumCDCHandler.create[R](typeHandler(handler))
+  def create[R](handler: Chunk[ChangeEvent[String, String]] => ZIO[R, Throwable, Unit])
+    : ZManaged[Has[Configuration] with Blocking with R, Throwable, Service] = {
+    DebeziumCDCHandler.create[R](handler)
   }
 
 }

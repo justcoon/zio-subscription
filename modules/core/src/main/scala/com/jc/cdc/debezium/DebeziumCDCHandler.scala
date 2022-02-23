@@ -42,6 +42,7 @@ object DebeziumCDCHandler {
     }
   }
 
+  // https://debezium.io/documentation/reference/1.8/development/engine.html#_in_the_code
   private def createEngine(handler: Chunk[ChangeEvent[String, String]] => Try[Unit], config: Configuration) = {
     Try {
       val consumer = createChangeConsumer(handler)
@@ -73,7 +74,8 @@ object DebeziumCDCHandler {
     engine.flatMap(s => s.start.as(s)).toManaged(s => s.shutdown.ignore)
   }
 
-  def getChangeEventPayload[T](event: ChangeEvent[String, String])(implicit
+  // https://debezium.io/documentation/reference/1.8/connectors/postgresql.html#postgresql-update-events
+  def getPostgresChangeEventPayload[T](event: ChangeEvent[String, String])(implicit
     decoder: io.circe.Decoder[T]): Either[circe.Error, T] = {
     import io.circe.parser._
     parse(event.value()).flatMap { json =>
