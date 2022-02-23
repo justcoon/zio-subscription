@@ -1,11 +1,10 @@
 package com.jc.subscription.module.db
 
 import com.github.jasync.sql.db.postgresql.PostgreSQLConnection
-import io.getquill.context.zio.ZioJAsyncConnection
+import io.getquill.context.zio.{JAsyncContextConfig, ZioJAsyncConnection}
 import zio.ZLayer
 
 object DbConnection {
-
-  val live: ZLayer[DbConfig, Throwable, DbConnection] =
-    ZioJAsyncConnection.live[PostgreSQLConnection]
+  def create(config: JAsyncContextConfig[PostgreSQLConnection]): ZLayer[Any, Throwable, DbConnection] =
+    ZLayer.succeed(config) >>> ZioJAsyncConnection.live[PostgreSQLConnection]
 }

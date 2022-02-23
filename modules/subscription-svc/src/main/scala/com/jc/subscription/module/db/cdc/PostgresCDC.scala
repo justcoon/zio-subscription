@@ -2,7 +2,7 @@ package com.jc.subscription.module.db.cdc
 
 import com.github.jasync.sql.db.postgresql.PostgreSQLConnection
 import com.jc.cdc.CDCHandler
-import com.jc.subscription.module.db.DbConfig
+import com.jc.subscription.model.config.DbConfig
 import com.jc.subscription.module.repo.SubscriptionEventRepo
 import io.debezium.config.Configuration
 import io.getquill.context.zio.JAsyncContextConfig
@@ -11,8 +11,8 @@ import zio.blocking.Blocking
 
 object PostgresCDC {
 
-  def getConfig(connectionConfig: JAsyncContextConfig[PostgreSQLConnection]): Configuration = {
-    val poolConfig = connectionConfig.connectionPoolConfiguration
+  def getConfig(dbConfig: DbConfig): Configuration = {
+    val poolConfig = dbConfig.connection.connectionPoolConfiguration
     val tables = "subscription_events" :: Nil
     val schema = "public"
     val tablesInclude = tables.map(table => s"$schema.$table").mkString(",")
@@ -34,17 +34,16 @@ object PostgresCDC {
       .build
   }
 
-  def create[R <: Has[_]](
+  def create[R](
+    dbConfig: DbConfig,
     handler: Chunk[Either[Throwable, SubscriptionEventRepo.SubscriptionEvent]] => ZIO[R, Throwable, Unit])
-    : ZLayer[DbConfig with Blocking with R, Throwable, CDCHandler] = {
+    : ZLayer[Blocking with R, Throwable, CDCHandler] = {
 
-    val cdc = for {
-      dbConfig <- ZManaged.service[JAsyncContextConfig[PostgreSQLConnection]]
-      configLayer = ZLayer.succeed(getConfig(dbConfig))
-      cdc <- CDCHandler
-        .create(handler)(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder)
-        .provideSomeLayer[Blocking with R](configLayer)
-    } yield cdc
+    val configLayer = ZLayer.succeed(getConfig(dbConfig))
+
+    val cdc = CDCHandler
+      .create(handler)(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder)
+      .provideSomeLayer[Blocking with R](configLayer)
 
     cdc.toLayer
   }
