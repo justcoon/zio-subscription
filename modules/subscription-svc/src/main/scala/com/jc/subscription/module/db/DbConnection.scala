@@ -5,6 +5,7 @@ import io.getquill.context.zio.{JAsyncContextConfig, ZioJAsyncConnection}
 import zio.ZLayer
 
 object DbConnection {
+
   def create(config: JAsyncContextConfig[PostgreSQLConnection]): ZLayer[Any, Throwable, DbConnection] =
     ZLayer.succeed(config) >>> ZioJAsyncConnection.live[PostgreSQLConnection]
 }
