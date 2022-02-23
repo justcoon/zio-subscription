@@ -5,8 +5,7 @@ import com.jc.cdc.CDCHandler
 import com.jc.subscription.model.config.DbConfig
 import com.jc.subscription.module.repo.SubscriptionEventRepo
 import io.debezium.config.Configuration
-import io.getquill.context.zio.JAsyncContextConfig
-import zio.{Chunk, Has, ZIO, ZLayer, ZManaged}
+import zio.{Chunk, ZIO, ZLayer}
 import zio.blocking.Blocking
 
 object PostgresCDC {
@@ -16,12 +15,14 @@ object PostgresCDC {
     val tables = "subscription_events" :: Nil
     val schema = "public"
     val tablesInclude = tables.map(table => s"$schema.$table").mkString(",")
-
+    val offsetStoreFilename = s"${dbConfig.cdc.offsetStoreDir}/subscription-offsets.dat"
+    val dbHistoryFilename = s"${dbConfig.cdc.offsetStoreDir}/subscription-dbhistory.dat"
     Configuration.create
       .`with`("name", "subscription-outbox-connector")
       .`with`("connector.class", "io.debezium.connector.postgresql.PostgresConnector")
-      .`with`("offset.storage.file.filename", "/tmp/offsets.dat")
-      .`with`("offset.flush.interval.ms", "60000")
+      .`with`("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore")
+      .`with`("offset.storage.file.filename", offsetStoreFilename)
+      .`with`("offset.flush.interval.ms", "5000")
       .`with`("database.hostname", poolConfig.getHost)
       .`with`("plugin.name", "pgoutput")
       .`with`("database.port", poolConfig.getPort)
@@ -31,6 +32,8 @@ object PostgresCDC {
       .`with`("table.include.list", tablesInclude)
       .`with`("database.server.id", "1")
       .`with`("database.server.name", "dbserver")
+      .`with`("database.history", "io.debezium.relational.history.FileDatabaseHistory")
+      .`with`("database.history.file.filename", dbHistoryFilename)
       .build
   }
 
