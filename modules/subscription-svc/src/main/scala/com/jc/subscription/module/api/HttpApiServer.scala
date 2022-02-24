@@ -10,12 +10,11 @@ import zio.interop.catz._
 import zio.{Has, RIO, UIO, ZIO, ZLayer}
 import zio.blocking.Blocking
 import zio.clock.Clock
-import zio.logging.Logging
 import eu.timepit.refined.auto._
 
 object HttpApiServer {
 
-  type ServerEnv = Clock with Blocking with Logging
+  type ServerEnv = Clock with Blocking
 
   private def isReady(): UIO[Boolean] = {
     ZIO.succeed(true)
