@@ -1,16 +1,12 @@
 package com.jc.subscription
 
 import com.jc.auth.JwtAuthenticator
-import com.jc.cdc.CDCHandler
 import com.jc.logging.api.{LoggingSystemGrpcApi, LoggingSystemGrpcApiHandler}
 import com.jc.logging.{LogbackLoggingSystem, LoggingSystem}
 import com.jc.subscription.model.config.{AppConfig, PrometheusConfig}
 import com.jc.subscription.module.api.{GrpcApiServer, HttpApiServer, SubscriptionGrpcApiHandler}
 import com.jc.subscription.module.db.DbConnection
-import com.jc.subscription.module.db.cdc.PostgresCDC
 import com.jc.subscription.module.domain.SubscriptionDomain
-import com.jc.subscription.module.event.SubscriptionEventProducer
-import com.jc.subscription.module.kafka.KafkaProducer
 import com.jc.subscription.module.metrics.PrometheusMetricsExporter
 import com.jc.subscription.module.repo.{SubscriptionEventRepo, SubscriptionRepo}
 import eu.timepit.refined.auto._

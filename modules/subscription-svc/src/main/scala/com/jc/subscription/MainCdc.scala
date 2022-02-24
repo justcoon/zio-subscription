@@ -1,11 +1,8 @@
 package com.jc.subscription
 
-import com.jc.auth.JwtAuthenticator
 import com.jc.cdc.CDCHandler
-import com.jc.logging.api.{LoggingSystemGrpcApi, LoggingSystemGrpcApiHandler}
-import com.jc.logging.{LogbackLoggingSystem, LoggingSystem}
 import com.jc.subscription.model.config.AppConfig
-import com.jc.subscription.module.api.{GrpcApiServer, HttpApiServer, SubscriptionGrpcApiHandler}
+import com.jc.subscription.module.api.HttpApiServer
 import com.jc.subscription.module.db.DbConnection
 import com.jc.subscription.module.db.cdc.PostgresCDC
 import com.jc.subscription.module.event.SubscriptionEventProducer
@@ -13,7 +10,6 @@ import com.jc.subscription.module.kafka.KafkaProducer
 import com.jc.subscription.module.metrics.PrometheusMetricsExporter
 import eu.timepit.refined.auto._
 import org.http4s.server.{Server => HttpServer}
-import scalapb.zio_grpc.{Server => GrpcServer}
 import zio._
 import zio.blocking.Blocking
 import zio.clock.Clock
