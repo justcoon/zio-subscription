@@ -1,13 +1,13 @@
 package com.jc.subscription.module.db.cdc
 
-import com.jc.cdc.CDCHandler
+import com.jc.cdc.CdcHandler
 import com.jc.subscription.model.config.DbCdcConfig
 import com.jc.subscription.module.repo.SubscriptionEventRepo
 import io.debezium.config.Configuration
 import zio.{Chunk, ZIO, ZLayer}
 import zio.blocking.Blocking
 
-object PostgresCDC {
+object PostgresCdc {
 
   // https://debezium.io/documentation/reference/1.8/development/engine.html#_in_the_code
   def getConfig(dbCdcConfig: DbCdcConfig): Configuration = {
@@ -40,10 +40,10 @@ object PostgresCDC {
   def create[R](
     dbCdcConfig: DbCdcConfig,
     handler: Chunk[Either[Throwable, SubscriptionEventRepo.SubscriptionEvent]] => ZIO[R, Throwable, Unit])
-    : ZLayer[Blocking with R, Throwable, CDCHandler] = {
-    val typeHandler = CDCHandler.postgresTypeHandler(handler)(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder)
+    : ZLayer[Blocking with R, Throwable, CdcHandler] = {
+    val typeHandler = CdcHandler.postgresTypeHandler(handler)(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder)
     val configLayer = ZLayer.succeed(getConfig(dbCdcConfig))
-    val cdc = CDCHandler.create(typeHandler).provideSomeLayer[Blocking with R](configLayer)
+    val cdc = CdcHandler.create(typeHandler).provideSomeLayer[Blocking with R](configLayer)
     cdc.toLayer
   }
 }

@@ -35,6 +35,5 @@ final case class DbCdcConfig(cdc: CdcConfig, connection: JAsyncContextConfig[Pos
 
 object DbCdcConfig {
   import DbConfig.jAsyncContextConfigReader
-
   implicit lazy val configReader = deriveReader[DbCdcConfig]
 }
