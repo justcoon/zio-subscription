@@ -1,7 +1,7 @@
 package com.jc.subscription
 
 import com.jc.cdc.CDCHandler
-import com.jc.subscription.model.config.AppConfig
+import com.jc.subscription.model.config.AppCdcConfig
 import com.jc.subscription.module.api.HttpApiServer
 import com.jc.subscription.module.db.DbConnection
 import com.jc.subscription.module.db.cdc.PostgresCDC
@@ -23,11 +23,10 @@ import zio.metrics.prometheus.exporters.Exporters
 object MainCdc extends App {
 
   type AppEnvironment = Clock
-    with Console with Blocking with DbConnection with SubscriptionEventProducer
-    with Has[HttpServer] with Logging with Registry with Exporters
-    with CDCHandler
+    with Console with Blocking with DbConnection with SubscriptionEventProducer with Has[HttpServer] with Logging
+    with Registry with Exporters with CDCHandler
 
-  private def createAppLayer(appConfig: AppConfig): ZLayer[Any, Throwable, AppEnvironment] = {
+  private def createAppLayer(appConfig: AppCdcConfig): ZLayer[Any, Throwable, AppEnvironment] = {
     ZLayer.fromMagic[AppEnvironment](
       Clock.live,
       Console.live,
@@ -45,7 +44,7 @@ object MainCdc extends App {
 
   override def run(args: List[String]): ZIO[ZEnv, Nothing, ExitCode] = {
     val result: ZIO[zio.ZEnv, Throwable, Nothing] = for {
-      appConfig <- AppConfig.getConfig
+      appConfig <- AppCdcConfig.getConfig
 
       runtime: ZIO[AppEnvironment, Throwable, Nothing] = ZIO.runtime[AppEnvironment].flatMap {
         implicit rts: Runtime[AppEnvironment] =>

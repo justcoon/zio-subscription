@@ -12,7 +12,7 @@ final case class AppConfig(
   restApi: HttpApiConfig,
   prometheus: PrometheusConfig,
   jwt: JwtConfig,
-  db: DbConfig)
+  db: DbCdcConfig)
 
 object AppConfig {
   implicit lazy val appConfigReader = deriveReader[AppConfig]

@@ -3,14 +3,12 @@ package com.jc.subscription
 import com.jc.auth.JwtAuthenticator
 import com.jc.logging.api.{LoggingSystemGrpcApi, LoggingSystemGrpcApiHandler}
 import com.jc.logging.{LogbackLoggingSystem, LoggingSystem}
-import com.jc.subscription.model.config.{AppConfig, PrometheusConfig}
+import com.jc.subscription.model.config.AppSvcConfig
 import com.jc.subscription.module.api.{GrpcApiServer, HttpApiServer, SubscriptionGrpcApiHandler}
 import com.jc.subscription.module.db.DbConnection
 import com.jc.subscription.module.domain.SubscriptionDomain
 import com.jc.subscription.module.metrics.PrometheusMetricsExporter
 import com.jc.subscription.module.repo.{SubscriptionEventRepo, SubscriptionRepo}
-import eu.timepit.refined.auto._
-import io.prometheus.client.exporter.{HTTPServer => PrometheusHttpServer}
 import org.http4s.server.{Server => HttpServer}
 import scalapb.zio_grpc.{Server => GrpcServer}
 import zio._
@@ -28,18 +26,10 @@ object MainSvc extends App {
 
   type AppEnvironment = Clock
     with Console with Blocking with JwtAuthenticator with DbConnection with SubscriptionRepo with SubscriptionEventRepo
-    with SubscriptionDomain with LoggingSystem with LoggingSystemGrpcApiHandler
-    with SubscriptionGrpcApiHandler with GrpcServer with Has[HttpServer] with Logging with Registry with Exporters
+    with SubscriptionDomain with LoggingSystem with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler
+    with GrpcServer with Has[HttpServer] with Logging with Registry with Exporters
 
-  private def metrics(config: PrometheusConfig): ZIO[AppEnvironment, Throwable, PrometheusHttpServer] = {
-    for {
-      registry <- getCurrentRegistry()
-      _ <- initializeDefaultExports(registry)
-      prometheusServer <- http(registry, config.port)
-    } yield prometheusServer
-  }
-
-  private def createAppLayer(appConfig: AppConfig): ZLayer[Any, Throwable, AppEnvironment] = {
+  private def createAppLayer(appConfig: AppSvcConfig): ZLayer[Any, Throwable, AppEnvironment] = {
     ZLayer.fromMagic[AppEnvironment](
       Clock.live,
       Console.live,
@@ -62,7 +52,7 @@ object MainSvc extends App {
 
   override def run(args: List[String]): ZIO[ZEnv, Nothing, ExitCode] = {
     val result: ZIO[zio.ZEnv, Throwable, Nothing] = for {
-      appConfig <- AppConfig.getConfig
+      appConfig <- AppSvcConfig.getConfig
 
       runtime: ZIO[AppEnvironment, Throwable, Nothing] = ZIO.runtime[AppEnvironment].flatMap {
         implicit rts: Runtime[AppEnvironment] =>
