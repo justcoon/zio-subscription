@@ -8,14 +8,7 @@ import pureconfig.ConfigReader.Result
 import pureconfig.{ConfigCursor, ConfigReader}
 import pureconfig.generic.semiauto.deriveReader
 
-final case class CdcConfig(offsetStoreDir: String Refined NonEmpty)
-
-object CdcConfig {
-  import eu.timepit.refined.pureconfig._
-  implicit lazy val configReader = deriveReader[CdcConfig]
-}
-
-final case class DbConfig(cdc: CdcConfig, connection: JAsyncContextConfig[PostgreSQLConnection])
+final case class DbConfig(connection: JAsyncContextConfig[PostgreSQLConnection])
 
 object DbConfig {
 
@@ -29,4 +22,18 @@ object DbConfig {
   }
 
   implicit lazy val configReader = deriveReader[DbConfig]
+}
+
+final case class CdcConfig(offsetStoreDir: String Refined NonEmpty)
+
+object CdcConfig {
+  import eu.timepit.refined.pureconfig._
+  implicit lazy val configReader = deriveReader[CdcConfig]
+}
+
+final case class DbCdcConfig(cdc: CdcConfig, connection: JAsyncContextConfig[PostgreSQLConnection])
+
+object DbCdcConfig {
+  import DbConfig.jAsyncContextConfigReader
+  implicit lazy val configReader = deriveReader[DbCdcConfig]
 }

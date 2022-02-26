@@ -1,22 +1,22 @@
 package com.jc.subscription.module.db.cdc
 
-import com.jc.cdc.CDCHandler
-import com.jc.subscription.model.config.DbConfig
+import com.jc.cdc.CdcHandler
+import com.jc.subscription.model.config.DbCdcConfig
 import com.jc.subscription.module.repo.SubscriptionEventRepo
 import io.debezium.config.Configuration
 import zio.{Chunk, ZIO, ZLayer}
 import zio.blocking.Blocking
 
-object PostgresCDC {
+object PostgresCdc {
 
   // https://debezium.io/documentation/reference/1.8/development/engine.html#_in_the_code
-  def getConfig(dbConfig: DbConfig): Configuration = {
-    val poolConfig = dbConfig.connection.connectionPoolConfiguration
+  def getConfig(dbCdcConfig: DbCdcConfig): Configuration = {
+    val poolConfig = dbCdcConfig.connection.connectionPoolConfiguration
     val tables = "subscription_events" :: Nil
     val schema = "public"
     val tablesInclude = tables.map(table => s"$schema.$table").mkString(",")
-    val offsetStoreFilename = s"${dbConfig.cdc.offsetStoreDir}/subscription-offsets.dat"
-    val dbHistoryFilename = s"${dbConfig.cdc.offsetStoreDir}/subscription-dbhistory.dat"
+    val offsetStoreFilename = s"${dbCdcConfig.cdc.offsetStoreDir}/subscription-offsets.dat"
+    val dbHistoryFilename = s"${dbCdcConfig.cdc.offsetStoreDir}/subscription-dbhistory.dat"
     Configuration.create
       .`with`("name", "subscription-outbox-connector")
       .`with`("connector.class", "io.debezium.connector.postgresql.PostgresConnector")
@@ -38,12 +38,12 @@ object PostgresCDC {
   }
 
   def create[R](
-    dbConfig: DbConfig,
+    dbCdcConfig: DbCdcConfig,
     handler: Chunk[Either[Throwable, SubscriptionEventRepo.SubscriptionEvent]] => ZIO[R, Throwable, Unit])
-    : ZLayer[Blocking with R, Throwable, CDCHandler] = {
-    val typeHandler = CDCHandler.postgresTypeHandler(handler)(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder)
-    val configLayer = ZLayer.succeed(getConfig(dbConfig))
-    val cdc = CDCHandler.create(typeHandler).provideSomeLayer[Blocking with R](configLayer)
+    : ZLayer[Blocking with R, Throwable, CdcHandler] = {
+    val typeHandler = CdcHandler.postgresTypeHandler(handler)(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder)
+    val configLayer = ZLayer.succeed(getConfig(dbCdcConfig))
+    val cdc = CdcHandler.create(typeHandler).provideSomeLayer[Blocking with R](configLayer)
     cdc.toLayer
   }
 }

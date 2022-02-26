@@ -6,14 +6,14 @@ import io.debezium.engine.format.Json
 import io.debezium.engine.{ChangeEvent, DebeziumEngine}
 import zio.blocking.Blocking
 import zio.{Chunk, Has, Task, ZIO, ZManaged}
-import com.jc.cdc.CDCHandler
+import com.jc.cdc.CdcHandler
 
 import scala.util.{Failure, Success, Try}
 
-object DebeziumCDCHandler {
+object DebeziumCdcHandler {
 
   final private class DebeziumService(engine: DebeziumEngine[ChangeEvent[String, String]], blocking: Blocking.Service)
-      extends CDCHandler.Service {
+      extends CdcHandler.Service {
 
     override def start: Task[Unit] = {
       Task.effect(blocking.blockingExecutor.submitOrThrow(engine))
@@ -59,7 +59,7 @@ object DebeziumCDCHandler {
 
   def create[R](
     handler: Chunk[ChangeEvent[String, String]] => ZIO[R, Throwable, Unit]
-  ): ZManaged[Has[Configuration] with Blocking with R, Throwable, CDCHandler.Service] = {
+  ): ZManaged[Has[Configuration] with Blocking with R, Throwable, CdcHandler.Service] = {
     val engine = for {
       r <- ZIO.runtime[R]
       c <- ZIO.service[Configuration]
