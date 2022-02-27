@@ -35,3 +35,9 @@ kube deployment
 ```
 kubectl apply -f kube/subscription.yaml
 ```
+
+forward service
+
+```
+kubectl port-forward service/subscription-svc 8040:8010
+```
