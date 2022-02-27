@@ -1,4 +1,3 @@
-
 #kafka
 https://strimzi.io/quickstarts/
 
@@ -19,14 +18,20 @@ https://devopscube.com/deploy-postgresql-statefulset/
 ```
 kubectl exec --stdin --tty postgres-sts-0 -- /bin/bash
 ```
+
 # docker env
 ```
 eval $(minikube -p minikube docker-env)
 ```
-# docker image
+
+# subscription service
+
+docker image
 ```
 sbt docker:publishLocal
 ```
 
-
+kube deployment
+```
 kubectl apply -f kube/subscription.yaml
+```
