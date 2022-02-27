@@ -52,6 +52,8 @@ spec:
             - name: prometheus
               containerPort: 9080
               protocol: TCP
+          # app mode based on index: 0 - all (svc and cdc), other - svc
+          command: [ "/bin/sh", "-c", "SET_INDEX=${HOSTNAME##*-}; if [ $SET_INDEX = '0' ]; then export APP_MODE='all'; else export APP_MODE='svc'; fi; /opt/docker/bin/subscription-svc" ]
           env:
             - name: NAMESPACE
               valueFrom:
@@ -61,6 +63,8 @@ spec:
               value: "-Xmx512m -Dconfig.resource=application-kube.conf"
             - name: KAFKA_URL
               value: "kafka-kafka-brokers:9092"
+            - name: DB_HOST
+              value: "postgres-headless-svc"
           volumeMounts:
             - name: subscription-svc-data
               mountPath: /cdc
@@ -72,7 +76,7 @@ spec:
         storageClassName: fast
         resources:
           requests:
-            storage: 1Gi
+            storage: 100Mi
 ---
 kind: StorageClass
 apiVersion: storage.k8s.io/v1
