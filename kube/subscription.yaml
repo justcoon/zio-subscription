@@ -52,10 +52,12 @@ spec:
             - name: prometheus
               containerPort: 9080
               protocol: TCP
-          lifecycle: # https://stackoverflow.com/questions/50750672/is-there-a-way-to-get-ordinal-index-of-a-pod-with-in-kubernetes-statefulset-conf
-            postStart:
-              exec: # index 0 - all (svc and cdc), other - svc
-                command: [ "/bin/sh", "-c", "SET_INDEX=${HOSTNAME##*-}; if [ $SET_INDEX = '0' ]; then export APP_MODE='all'; else export APP_MODE='svc'; fi" ]
+#          lifecycle: # https://stackoverflow.com/questions/50750672/is-there-a-way-to-get-ordinal-index-of-a-pod-with-in-kubernetes-statefulset-conf
+#            postStart:
+#              exec: # index 0 - all (svc and cdc), other - svc
+#                command: [ "/bin/sh", "-c", "SET_INDEX=${HOSTNAME##*-}; if [ $SET_INDEX = '0' ]; then export APP_MODE='all'; else export APP_MODE='svc'; fi" ]
+#                "/opt/docker/bin/subscription-svc"
+          command: [ "/bin/sh", "-c", "SET_INDEX=${HOSTNAME##*-}; if [ $SET_INDEX = '0' ]; then export APP_MODE='all'; else export APP_MODE='svc'; fi; /opt/docker/bin/subscription-svc" ]
           env:
             - name: NAMESPACE
               valueFrom:

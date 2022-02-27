@@ -110,7 +110,6 @@ object Main extends App {
         case AppMode.Svc => AppConfig.getConfig[AppSvcConfig](config).map(c => c -> createSvcAppLayer(c))
         case AppMode.Cdc => AppConfig.getConfig[AppCdcConfig](config).map(c => c -> createCdcAppLayer(c))
       }
-      _ <- Logging.debug(s"app mode: ${mode}").provideLayer(res._2)
     } yield res
   }
 
@@ -121,7 +120,8 @@ object Main extends App {
 
       runtime: ZIO[CommonEnvironment, Throwable, Nothing] = ZIO.runtime[CommonEnvironment].flatMap {
         implicit rts: Runtime[CommonEnvironment] =>
-          PrometheusMetricsExporter.create(appConfig.prometheus) *>
+          Logging.debug(s"app mode: ${appConfig.getClass.getSimpleName.substring(0, 6)}") *>
+            PrometheusMetricsExporter.create(appConfig.prometheus) *>
             ZIO.never
       }
 
