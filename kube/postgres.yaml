@@ -68,8 +68,8 @@ kind: Secret
 metadata:
   name: postgres-secrets
 data:
-  postgresql-password: "1234"
-  repmgr-password: "1234"
+  postgresql-password: "MTIzNA==" #base64
+  repmgr-password: "cGFzczEyMzQ=" #base64
 ---
 apiVersion: apps/v1
 kind: StatefulSet

@@ -65,6 +65,8 @@ spec:
               value: "-Xmx512m -Dconfig.resource=application-kube.conf"
             - name: KAFKA_URL
               value: "kafka-kafka-brokers:9092"
+            - name: DB_HOST
+              value: "postgres-headless-svc"
           volumeMounts:
             - name: subscription-svc-data
               mountPath: /cdc
