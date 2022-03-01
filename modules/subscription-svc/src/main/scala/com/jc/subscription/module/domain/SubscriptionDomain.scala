@@ -210,4 +210,28 @@ object SubscriptionDomain {
     }
     res.toLayer
   }
+
+  def createSubscription(request: com.jc.subscription.domain.proto.CreateSubscriptionReq)
+    : zio.ZIO[SubscriptionDomain, Throwable, com.jc.subscription.domain.proto.CreateSubscriptionRes] =
+    ZIO.service[SubscriptionDomain.Service].flatMap(_.createSubscription(request))
+
+  def updateSubscriptionAddress(request: com.jc.subscription.domain.proto.UpdateSubscriptionAddressReq)
+    : zio.ZIO[SubscriptionDomain, Throwable, com.jc.subscription.domain.proto.UpdateSubscriptionAddressRes] =
+    ZIO.service[SubscriptionDomain.Service].flatMap(_.updateSubscriptionAddress(request))
+
+  def updateSubscriptionEmail(request: com.jc.subscription.domain.proto.UpdateSubscriptionEmailReq)
+    : zio.ZIO[SubscriptionDomain, Throwable, com.jc.subscription.domain.proto.UpdateSubscriptionEmailRes] =
+    ZIO.service[SubscriptionDomain.Service].flatMap(_.updateSubscriptionEmail(request))
+
+  def removeSubscription(request: com.jc.subscription.domain.proto.RemoveSubscriptionReq)
+    : zio.ZIO[SubscriptionDomain, Throwable, com.jc.subscription.domain.proto.RemoveSubscriptionRes] =
+    ZIO.service[SubscriptionDomain.Service].flatMap(_.removeSubscription(request))
+
+  def getSubscription(request: com.jc.subscription.domain.proto.GetSubscriptionReq)
+    : zio.ZIO[SubscriptionDomain, Throwable, com.jc.subscription.domain.proto.GetSubscriptionRes] =
+    ZIO.service[SubscriptionDomain.Service].flatMap(_.getSubscription(request))
+
+  def getSubscriptions(request: com.jc.subscription.domain.proto.GetSubscriptionsReq)
+    : zio.ZIO[SubscriptionDomain, Throwable, com.jc.subscription.domain.proto.GetSubscriptionsRes] =
+    ZIO.service[SubscriptionDomain.Service].flatMap(_.getSubscriptions(request))
 }

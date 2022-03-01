@@ -1,4 +1,5 @@
-#kafka
+# kafka
+
 https://strimzi.io/quickstarts/
 
 ```
@@ -11,7 +12,7 @@ kubectl exec --stdin --tty kafka-kafka-0 -- /bin/bash
 kafka-topics.sh --bootstrap-server kafka-kafka-brokers:9092 --create --topic c-subscription --partitions 3
 ```
 
-#postgres
+# postgres
 
 https://devopscube.com/deploy-postgresql-statefulset/
 
@@ -19,12 +20,12 @@ https://devopscube.com/deploy-postgresql-statefulset/
 kubectl exec --stdin --tty postgres-sts-0 -- /bin/bash
 ```
 
-# docker env
+# subscription service
+
+minikube docker env
 ```
 eval $(minikube -p minikube docker-env)
 ```
-
-# subscription service
 
 docker image
 ```
@@ -37,7 +38,6 @@ kubectl apply -f kube/subscription.yaml
 ```
 
 forward service
-
 ```
 kubectl port-forward service/subscription-svc 8040:8010
 ```
