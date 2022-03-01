@@ -5,7 +5,19 @@
             </Pattern>
         </layout>
     </appender>
-    <root level="DEBUG">
+    <logger name="org.apache.kafka" level="INFO"/>
+
+    <logger name="kafka" level="WARN"/>
+
+    <logger name="io.debezium" level="WARN"/>
+
+    <logger name="org.http4s.server.middleware" level="WARN"/>
+
+    <logger name="org.apache.zookeeper" level="ERROR"/>
+
+    <logger name="com.jc" level="ALL"/>
+
+    <root level="INFO">
         <appender-ref ref="STDOUT"/>
     </root>
 </configuration>

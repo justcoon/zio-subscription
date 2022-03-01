@@ -4,7 +4,7 @@ import com.jc.cdc.CdcHandler
 import com.jc.subscription.model.config.DbCdcConfig
 import com.jc.subscription.module.repo.SubscriptionEventRepo
 import io.debezium.config.Configuration
-import zio.{Chunk, ZIO, ZLayer}
+import zio.{Chunk, Has, ZIO, ZLayer}
 import zio.blocking.Blocking
 
 object PostgresCdc {
@@ -15,8 +15,9 @@ object PostgresCdc {
     val tables = "subscription_events" :: Nil
     val schema = "public"
     val tablesInclude = tables.map(table => s"$schema.$table").mkString(",")
-    val offsetStoreFilename = s"${dbCdcConfig.cdc.offsetStoreDir}/subscription-offsets.dat"
-    val dbHistoryFilename = s"${dbCdcConfig.cdc.offsetStoreDir}/subscription-dbhistory.dat"
+    val offsetStoreFilename = s"${dbCdcConfig.cdc.offsetStoreDir}/${poolConfig.getDatabase}-offsets.dat"
+    val dbHistoryFilename = s"${dbCdcConfig.cdc.offsetStoreDir}/${poolConfig.getDatabase}-dbhistory.dat"
+    val slotName = s"${poolConfig.getDatabase}_subscription"
     Configuration.create
       .`with`("name", "subscription-outbox-connector")
       .`with`("connector.class", "io.debezium.connector.postgresql.PostgresConnector")
@@ -34,6 +35,7 @@ object PostgresCdc {
       .`with`("database.server.name", "dbserver")
       .`with`("database.history", "io.debezium.relational.history.FileDatabaseHistory")
       .`with`("database.history.file.filename", dbHistoryFilename)
+      .`with`("slot.name", slotName)
       .build
   }
 
@@ -44,6 +46,14 @@ object PostgresCdc {
     val typeHandler = CdcHandler.postgresTypeHandler(handler)(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder)
     val configLayer = ZLayer.succeed(getConfig(dbCdcConfig))
     val cdc = CdcHandler.create(typeHandler).provideSomeLayer[Blocking with R](configLayer)
+    cdc.toLayer
+  }
+
+  def create[R](handler: Chunk[Either[Throwable, SubscriptionEventRepo.SubscriptionEvent]] => ZIO[R, Throwable, Unit])
+    : ZLayer[Has[DbCdcConfig] with Blocking with R, Throwable, CdcHandler] = {
+    val typeHandler = CdcHandler.postgresTypeHandler(handler)(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder)
+    val configLayer = ZIO.service[DbCdcConfig].map(getConfig).toLayer
+    val cdc = CdcHandler.create(typeHandler).provideSomeLayer[Has[DbCdcConfig] with Blocking with R](configLayer)
     cdc.toLayer
   }
 }
