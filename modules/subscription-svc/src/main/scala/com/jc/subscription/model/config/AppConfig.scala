@@ -6,6 +6,10 @@ import pureconfig.{ConfigReader, ConfigSource}
 import pureconfig.error.ConfigReaderException
 import pureconfig.generic.semiauto._
 import zio.ZIO
+import zio.config.typesafe._
+import zio.config.syntax._
+import zio.config._
+import zio.config.magnolia.DeriveConfigDescriptor._
 
 sealed trait AppConfig {
   def restApi: HttpApiConfig
@@ -30,6 +34,8 @@ final case class AppAllConfig(
 
 object AppAllConfig {
   implicit lazy val appConfigReader = deriveReader[AppAllConfig]
+
+  implicit val appAllConfigDescription = descriptor[AppAllConfig].mapKey(toKebabCase)
 }
 
 final case class AppCdcConfig(kafka: KafkaConfig, restApi: HttpApiConfig, prometheus: PrometheusConfig, db: DbCdcConfig)
@@ -37,6 +43,8 @@ final case class AppCdcConfig(kafka: KafkaConfig, restApi: HttpApiConfig, promet
 
 object AppCdcConfig {
   implicit lazy val appConfigReader = deriveReader[AppCdcConfig]
+
+  implicit val appCdcConfigDescriptor = descriptor[AppCdcConfig].mapKey(toKebabCase)
 }
 
 final case class AppSvcConfig(
@@ -49,4 +57,25 @@ final case class AppSvcConfig(
 
 object AppSvcConfig {
   implicit lazy val appConfigReader = deriveReader[AppSvcConfig]
+  import HttpApiConfig._
+  import PrometheusConfig._
+  import JwtConfig._
+  import DbConfig._
+  implicit val appSvcConfigDescriptor = descriptor[AppSvcConfig].mapKey(toKebabCase)
 }
+
+//final case class AppSvcConfig2(
+////  grpcApi: HttpApiConfig
+////  restApi: HttpApiConfig,
+////  prometheus: PrometheusConfig,
+//  jwt: JwtConfig,
+//  jw2: String,
+//  db: DbConfig
+//)
+//
+//object AppSvcConfig2 {
+//  import DbConfig._
+////  import JwtConfig._
+////  import PrometheusConfig._
+//  implicit val configDescriptor = descriptor[AppSvcConfig2]
+//}
