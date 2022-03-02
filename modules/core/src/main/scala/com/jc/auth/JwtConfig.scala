@@ -3,7 +3,7 @@ package com.jc.auth
 import eu.timepit.refined.types.numeric.PosLong
 import eu.timepit.refined.types.string.NonEmptyString
 import pureconfig.generic.semiauto.deriveReader
-import zio.config._
+import zio.config.toKebabCase
 import zio.config.refined._
 import zio.config.magnolia.descriptor
 

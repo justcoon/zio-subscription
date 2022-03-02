@@ -5,11 +5,9 @@ import com.typesafe.config.Config
 import pureconfig.{ConfigReader, ConfigSource}
 import pureconfig.error.ConfigReaderException
 import pureconfig.generic.semiauto._
-import zio.ZIO
-import zio.config.typesafe._
-import zio.config.syntax._
+import zio.{IO, ZIO}
 import zio.config._
-import zio.config.magnolia.DeriveConfigDescriptor._
+import ConfigDescriptor._
 
 sealed trait AppConfig {
   def restApi: HttpApiConfig
@@ -21,6 +19,11 @@ object AppConfig {
   def getConfig[C <: AppConfig](config: Config)(implicit
     r: ConfigReader[C]): ZIO[Any, ConfigReaderException[Nothing], C] =
     ZIO.fromEither(ConfigSource.fromConfig(config).load[C]).mapError(ConfigReaderException.apply)
+
+  def readConfig[C <: AppConfig](config: zio.config.ConfigSource)(implicit
+    r: ConfigDescriptor[C]): IO[ReadError[String], C] = {
+    read(r from config)
+  }
 }
 
 final case class AppAllConfig(
@@ -35,7 +38,12 @@ final case class AppAllConfig(
 object AppAllConfig {
   implicit lazy val appConfigReader = deriveReader[AppAllConfig]
 
-  implicit val appAllConfigDescription = descriptor[AppAllConfig].mapKey(toKebabCase)
+  implicit val appAllConfigDescription = (nested("kafka")(KafkaConfig.kafkaConfigDescription) zip
+    nested("grpc-api")(HttpApiConfig.httpConfigDescription) zip
+    nested("rest-api")(HttpApiConfig.httpConfigDescription) zip
+    nested("prometheus")(PrometheusConfig.prometheusConfigDescription) zip
+    nested("jwt")(JwtConfig.jwtConfigDescription) zip
+    nested("db")(DbCdcConfig.dbCdcConfigDescription)).to[AppAllConfig]
 }
 
 final case class AppCdcConfig(kafka: KafkaConfig, restApi: HttpApiConfig, prometheus: PrometheusConfig, db: DbCdcConfig)
@@ -44,7 +52,10 @@ final case class AppCdcConfig(kafka: KafkaConfig, restApi: HttpApiConfig, promet
 object AppCdcConfig {
   implicit lazy val appConfigReader = deriveReader[AppCdcConfig]
 
-  implicit val appCdcConfigDescriptor = descriptor[AppCdcConfig].mapKey(toKebabCase)
+  implicit val appCdcConfigDescriptor = (nested("kafka")(KafkaConfig.kafkaConfigDescription) zip
+    nested("rest-api")(HttpApiConfig.httpConfigDescription) zip
+    nested("prometheus")(PrometheusConfig.prometheusConfigDescription) zip
+    nested("db")(DbCdcConfig.dbCdcConfigDescription)).to[AppCdcConfig]
 }
 
 final case class AppSvcConfig(
@@ -57,25 +68,10 @@ final case class AppSvcConfig(
 
 object AppSvcConfig {
   implicit lazy val appConfigReader = deriveReader[AppSvcConfig]
-  import HttpApiConfig._
-  import PrometheusConfig._
-  import JwtConfig._
-  import DbConfig._
-  implicit val appSvcConfigDescriptor = descriptor[AppSvcConfig].mapKey(toKebabCase)
-}
 
-//final case class AppSvcConfig2(
-////  grpcApi: HttpApiConfig
-////  restApi: HttpApiConfig,
-////  prometheus: PrometheusConfig,
-//  jwt: JwtConfig,
-//  jw2: String,
-//  db: DbConfig
-//)
-//
-//object AppSvcConfig2 {
-//  import DbConfig._
-////  import JwtConfig._
-////  import PrometheusConfig._
-//  implicit val configDescriptor = descriptor[AppSvcConfig2]
-//}
+  implicit val appSvcConfigDescriptor = (nested("grpc-api")(HttpApiConfig.httpConfigDescription) zip
+    nested("rest-api")(HttpApiConfig.httpConfigDescription) zip
+    nested("prometheus")(PrometheusConfig.prometheusConfigDescription) zip
+    nested("jwt")(JwtConfig.jwtConfigDescription) zip
+    nested("db")(DbConfig.dbConfigDescription)).to[AppSvcConfig]
+}
