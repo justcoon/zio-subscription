@@ -8,13 +8,12 @@ lazy val Versions = new {
   val zioInteropCats = "3.2.9.1"
   val zioLogging = "0.5.14"
   val zioMetrics = "1.0.14"
-  val zioKafka = "0.17.4"
+  val zioKafka = "0.17.5"
   val zioMagic = "0.3.11"
+  val zioConfig = "2.0.0"
   val jackson = "2.13.1"
   val circe = "0.14.1"
   val randomDataGenerator = "2.9"
-  val pureconfig = "0.17.1"
-  val refined = "0.9.28"
   val logback = "1.2.10"
   val grpc = "1.44.1"
   val chimney = "0.6.1"
@@ -42,9 +41,12 @@ lazy val library =
     val circeGenericExtras = "io.circe" %% "circe-generic-extras"                     % Versions.circe
     val circeYaml = "io.circe" %% "circe-yaml"                                        % Versions.circe
     val pauldijouJwtCirce = "com.pauldijou" %% "jwt-circe"                            % Versions.pauldijouJwt
-    val pureconfig = "com.github.pureconfig" %% "pureconfig"                          % Versions.pureconfig
-    val refinedPureconfig = "eu.timepit" %% "refined-pureconfig"                      % Versions.refined
-    val chimney = "io.scalaland" %% "chimney"                                         % Versions.chimney
+
+    val chimney = "io.scalaland" %% "chimney" % Versions.chimney
+
+    val zioConfigRefined = "dev.zio" %% "zio-config-refined"       % Versions.zioConfig
+    val zioConfigMagnolia = "dev.zio" %% "zio-config-magnolia" % Versions.zioConfig
+    val zioConfigTypesafe = "dev.zio" %% "zio-config-typesafe"     % Versions.zioConfig
 
     val quillPostgres = "io.getquill" %% "quill-jasync-zio-postgres" % Versions.quill
 
@@ -55,7 +57,9 @@ lazy val library =
     val scalapbRuntime =
       "com.thesamet.scalapb" %% "scalapb-runtime"                             % scalapb.compiler.Version.scalapbVersion % "protobuf"
     val scalapbRuntimeGrpc = "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion
-    val scalapbValidate =  "com.thesamet.scalapb" %% "scalapb-validate-core" % scalapb.validate.compiler.BuildInfo.version % "protobuf"
+
+    val scalapbValidate =
+      "com.thesamet.scalapb" %% "scalapb-validate-core" % scalapb.validate.compiler.BuildInfo.version % "protobuf"
 
     val zioTest = "dev.zio" %% "zio-test"                                      % Versions.zio                 % "test"
     val zioTestSbt = "dev.zio" %% "zio-test-sbt"                               % Versions.zio                 % "test"
@@ -64,8 +68,8 @@ lazy val library =
     // Java libraries
     val logback = "ch.qos.logback" % "logback-classic" % Versions.logback
 
-    val debeziumApi = "io.debezium" % "debezium-api" % Versions.debezium
-    val debeziumEmbedded = "io.debezium" % "debezium-embedded" % Versions.debezium
+    val debeziumApi = "io.debezium"               % "debezium-api"                % Versions.debezium
+    val debeziumEmbedded = "io.debezium"          % "debezium-embedded"           % Versions.debezium
     val debeziumConnectorPostgres = "io.debezium" % "debezium-connector-postgres" % Versions.debezium
   }
 
@@ -105,8 +109,9 @@ lazy val `core` =
         library.circeGenericExtras,
         library.circeYaml,
         library.pauldijouJwtCirce,
-        library.pureconfig,
-        library.refinedPureconfig,
+        library.zioConfigRefined,
+        library.zioConfigMagnolia,
+        library.zioConfigTypesafe,
         library.scalapbRuntime,
         library.scalapbRuntimeGrpc,
         library.debeziumApi,
@@ -170,8 +175,6 @@ lazy val `subscription-svc` =
         library.http4sCirce,
         library.circeGeneric,
         library.circeGenericExtras,
-        library.pureconfig,
-        library.refinedPureconfig,
         library.chimney,
         library.grpcServices,
         library.grpcNetty,

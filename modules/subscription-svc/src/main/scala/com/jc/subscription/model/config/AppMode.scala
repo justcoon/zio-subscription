@@ -1,21 +1,21 @@
 package com.jc.subscription.model.config
 
-import com.typesafe.config.Config
-import pureconfig._
-import pureconfig.generic.auto._
-import pureconfig.generic.semiauto._
-import zio.{Task, ZIO}
+import zio.config.magnolia.descriptor
+import zio.IO
+import zio.config.ReadError
 
 sealed trait AppMode extends Product with Serializable
 
 object AppMode {
-  final case object All extends AppMode
-  final case object Svc extends AppMode
-  final case object Cdc extends AppMode
+  final case object all extends AppMode
+  final case object svc extends AppMode
+  final case object cdc extends AppMode
 
-  implicit val modeReader: ConfigReader[AppMode] = deriveEnumerationReader[AppMode]
+  implicit val configDescription = descriptor[AppMode].default(AppMode.all)
 
-  def getMode(config: Config): Task[AppMode] = {
-    ZIO.succeed(ConfigSource.fromConfig(config).at("mode").load[AppMode].getOrElse(AppMode.All))
+  def readMode(config: zio.config.ConfigSource): IO[ReadError[String], AppMode] = {
+    import zio.config._
+    import ConfigDescriptor._
+    read(nested("mode")(configDescription) from config)
   }
 }

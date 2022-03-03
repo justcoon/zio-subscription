@@ -3,7 +3,7 @@ package com.jc.auth
 import java.time.Clock
 import io.circe.{Decoder, Encoder}
 import pdi.jwt._
-import zio.{UIO, ZIO, ZLayer}
+import zio.{Has, UIO, ZIO, ZLayer}
 
 import scala.util.Try
 
@@ -33,9 +33,19 @@ object JwtAuthenticator {
     }
   }
 
-  def live(config: JwtConfig): ZLayer[Any, Nothing, JwtAuthenticator] = {
+  def create(config: JwtConfig): ZLayer[Any, Nothing, JwtAuthenticator] = {
     val helper = new PdiJwtHelper(config)
     ZLayer.succeed(PdiJwtAuthenticator(helper, Clock.systemUTC()))
+  }
+
+  val live: ZLayer[Has[JwtConfig], Nothing, JwtAuthenticator] = {
+    ZIO
+      .service[JwtConfig]
+      .map { config =>
+        val helper = new PdiJwtHelper(config)
+        PdiJwtAuthenticator(helper, Clock.systemUTC())
+      }
+      .toLayer
   }
 }
 

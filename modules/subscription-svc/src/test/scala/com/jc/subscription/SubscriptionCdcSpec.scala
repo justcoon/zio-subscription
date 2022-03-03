@@ -3,13 +3,12 @@ package com.jc.subscription
 import com.jc.cdc.CdcHandler
 import com.jc.subscription.domain.proto.{CreateSubscriptionReq, GetSubscriptionReq}
 import com.jc.subscription.domain.SubscriptionEntity._
-import com.jc.subscription.model.config.{AppAllConfig, AppConfig}
+import com.jc.subscription.model.config.{AppCdcConfig, AppConfig}
 import com.jc.subscription.module.db.DbConnection
 import com.jc.subscription.module.db.cdc.PostgresCdc
 import com.jc.subscription.module.domain.SubscriptionDomain
 import com.jc.subscription.module.event.SubscriptionEventProducer
 import com.jc.subscription.module.repo.{SubscriptionEventRepo, SubscriptionRepo}
-import com.typesafe.config.ConfigFactory
 import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.console.Console
@@ -20,6 +19,9 @@ import zio.magic._
 import zio.test.Assertion._
 import zio.test._
 import zio.{Chunk, Has, Queue, Task, ZIO, ZLayer}
+import zio.config._
+import zio.config.syntax._
+import zio.config.typesafe._
 
 import java.util.UUID
 
@@ -48,7 +50,7 @@ object SubscriptionCdcSpec extends DefaultRunnableSpec {
     }
   }
 
-  private val testConfig = AppConfig.getConfig[AppAllConfig](ConfigFactory.load()).toLayer
+  private val testConfig = AppConfig.readConfig[AppCdcConfig](ConfigSource.fromResourcePath.memoize).toLayer
 
   private val testProducer
     : ZLayer[Has[Queue[SubscriptionEventRepo.SubscriptionEvent]] with Logging, Throwable, SubscriptionEventProducer] = {
@@ -66,19 +68,18 @@ object SubscriptionCdcSpec extends DefaultRunnableSpec {
   private val layer: ZLayer[Any, TestFailure[Throwable], AppEnvironment] = {
     ZLayer
       .fromMagic[AppEnvironment](
-        testConfig,
         Clock.live,
         Console.live,
         Blocking.live,
         Slf4jLogger.make((_, message) => message),
-        ZIO.service[AppAllConfig].map(_.db).toLayer,
+        testConfig.narrow(_.db),
         DbConnection.live,
         SubscriptionRepo.live,
         SubscriptionEventRepo.live,
         SubscriptionDomain.live,
         testQueue,
         testProducer,
-        ZIO.service[AppAllConfig].map(_.db.connection).toLayer,
+        testConfig.narrow(_.db.connection),
         PostgresCdc.create(SubscriptionEventProducer.processAndSend)
       )
       .mapError(TestFailure.fail)
