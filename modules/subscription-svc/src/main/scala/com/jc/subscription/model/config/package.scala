@@ -9,6 +9,7 @@ package object config {
   type IpAddress = String Refined IPv4
   type TopicName = String Refined NonEmpty
   type IndexName = String Refined NonEmpty
+  type OffsetDir = String Refined NonEmpty
 
 //  implicit def autoUnwrapIterableElements[EF[_, _], I[*] <: Iterable[*], E, EP](
 //    it: I[EF[E, EP]]

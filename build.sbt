@@ -14,8 +14,6 @@ lazy val Versions = new {
   val jackson = "2.13.1"
   val circe = "0.14.1"
   val randomDataGenerator = "2.9"
-  val pureconfig = "0.17.1"
-  val refined = "0.9.28"
   val logback = "1.2.10"
   val grpc = "1.44.1"
   val chimney = "0.6.1"
@@ -46,8 +44,6 @@ lazy val library =
 
     val chimney = "io.scalaland" %% "chimney" % Versions.chimney
 
-    val pureconfig = "com.github.pureconfig" %% "pureconfig"       % Versions.pureconfig
-    val refinedPureconfig = "eu.timepit" %% "refined-pureconfig"   % Versions.refined
     val zioConfigRefined = "dev.zio" %% "zio-config-refined"       % Versions.zioConfig
     val zioConfigMagnolia = "dev.zio" %% "zio-config-magnolia" % Versions.zioConfig
     val zioConfigTypesafe = "dev.zio" %% "zio-config-typesafe"     % Versions.zioConfig
@@ -113,8 +109,6 @@ lazy val `core` =
         library.circeGenericExtras,
         library.circeYaml,
         library.pauldijouJwtCirce,
-        library.pureconfig,
-        library.refinedPureconfig,
         library.zioConfigRefined,
         library.zioConfigMagnolia,
         library.zioConfigTypesafe,
@@ -181,8 +175,6 @@ lazy val `subscription-svc` =
         library.http4sCirce,
         library.circeGeneric,
         library.circeGenericExtras,
-        library.pureconfig,
-        library.refinedPureconfig,
         library.chimney,
         library.grpcServices,
         library.grpcNetty,
