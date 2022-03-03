@@ -50,7 +50,7 @@ object SubscriptionCdcSpec extends DefaultRunnableSpec {
     }
   }
 
-  private val testConfig = AppConfig.readConfig[AppCdcConfig](ConfigSource.fromResourcePath).toLayer
+  private val testConfig = AppConfig.readConfig[AppCdcConfig](ConfigSource.fromResourcePath.memoize).toLayer
 
   private val testProducer
     : ZLayer[Has[Queue[SubscriptionEventRepo.SubscriptionEvent]] with Logging, Throwable, SubscriptionEventProducer] = {

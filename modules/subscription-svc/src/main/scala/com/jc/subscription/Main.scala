@@ -23,6 +23,9 @@ import zio.logging.Logging
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.exporters.Exporters
 import zio.magic._
+import zio.config._
+import zio.config.syntax._
+import zio.config.typesafe._
 import scalapb.zio_grpc.{Server => GrpcServer}
 import org.http4s.server.{Server => HttpServer}
 import eu.timepit.refined.auto._
@@ -45,11 +48,11 @@ object Main extends App {
     with SubscriptionEventProducer with LoggingSystem with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler
     with GrpcServer with Has[HttpServer] with CdcHandler
 
-  private def createAppConfigAndLayer(config: Config): Task[(AppAllConfig, TaskLayer[AppEnvironment])] = {
-    AppConfig.getConfig[AppAllConfig](config).map { appConfig =>
+  private def createAppConfigAndLayer(config: ConfigSource): Task[(AppAllConfig, TaskLayer[AppEnvironment])] = {
+    AppConfig.readConfig[AppAllConfig](config).map { appConfig =>
       appConfig -> ZLayer.fromMagic[AppEnvironment](
         commonLayer,
-        JwtAuthenticator.live(appConfig.jwt),
+        JwtAuthenticator.create(appConfig.jwt),
         DbConnection.create(appConfig.db.connection),
         SubscriptionRepo.live,
         SubscriptionEventRepo.live,
@@ -71,11 +74,11 @@ object Main extends App {
     with LoggingSystem with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler with GrpcServer
     with Has[HttpServer]
 
-  private def createSvcAppConfigAndLayer(config: Config): Task[(AppSvcConfig, TaskLayer[SvcAppEnvironment])] = {
-    AppConfig.getConfig[AppSvcConfig](config).map { appConfig =>
+  private def createSvcAppConfigAndLayer(config: ConfigSource): Task[(AppSvcConfig, TaskLayer[SvcAppEnvironment])] = {
+    AppConfig.readConfig[AppSvcConfig](config).map { appConfig =>
       appConfig -> ZLayer.fromMagic[SvcAppEnvironment](
         commonLayer,
-        JwtAuthenticator.live(appConfig.jwt),
+        JwtAuthenticator.create(appConfig.jwt),
         DbConnection.create(appConfig.db.connection),
         SubscriptionRepo.live,
         SubscriptionEventRepo.live,
@@ -92,8 +95,8 @@ object Main extends App {
   type CdcAppEnvironment = CommonEnvironment
     with DbConnection with SubscriptionEventProducer with Has[HttpServer] with CdcHandler
 
-  private def createCdcAppConfigAndLayer(config: Config): Task[(AppAllConfig, TaskLayer[CdcAppEnvironment])] = {
-    AppConfig.getConfig[AppAllConfig](config).map { appConfig =>
+  private def createCdcAppConfigAndLayer(config: ConfigSource): Task[(AppAllConfig, TaskLayer[CdcAppEnvironment])] = {
+    AppConfig.readConfig[AppAllConfig](config).map { appConfig =>
       appConfig -> ZLayer.fromMagic[CdcAppEnvironment](
         commonLayer,
         DbConnection.create(appConfig.db.connection),
@@ -102,20 +105,19 @@ object Main extends App {
         HttpApiServer.create(appConfig.restApi),
         PostgresCdc.create(appConfig.db, SubscriptionEventProducer.processAndSend)
       )
-
     }
   }
 
   private val appConfigAndLayer: ZIO[Any, Throwable, (AppConfig, ZLayer[Any, Throwable, CommonEnvironment])] = {
     for {
-      config <- ZIO.succeed(ConfigFactory.load())
+      config <- ZIO.succeed(ConfigSource.fromResourcePath.memoize)
 
-      mode <- AppMode.getMode(config)
+      mode <- AppMode.readMode(config)
 
       res <- mode match {
-        case AppMode.All => createAppConfigAndLayer(config)
-        case AppMode.Svc => createSvcAppConfigAndLayer(config)
-        case AppMode.Cdc => createCdcAppConfigAndLayer(config)
+        case AppMode.`all` => createAppConfigAndLayer(config)
+        case AppMode.`svc` => createSvcAppConfigAndLayer(config)
+        case AppMode.`cdc` => createCdcAppConfigAndLayer(config)
       }
     } yield res
   }

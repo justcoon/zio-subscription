@@ -7,7 +7,7 @@ import org.http4s.server.middleware.{Logger => HttpServerLogger}
 import org.http4s.server.{Router, Server}
 import org.http4s.implicits._
 import zio.interop.catz._
-import zio.{Has, RIO, UIO, ZIO, ZLayer}
+import zio.{Has, RIO, UIO, ZIO, ZLayer, ZManaged}
 import zio.blocking.Blocking
 import zio.clock.Clock
 import eu.timepit.refined.auto._
@@ -36,6 +36,18 @@ object HttpApiServer {
         .resource
         .toManagedZIO
     )
+  }
+
+  val live: ZLayer[Has[HttpApiConfig] with ServerEnv, Throwable, Has[Server]] = {
+    val res = for {
+      config <- ZManaged.service[HttpApiConfig]
+      server <- BlazeServerBuilder[RIO[ServerEnv, *]]
+        .bindHttp(config.port, config.address)
+        .withHttpApp(httpApp())
+        .resource
+        .toManagedZIO
+    } yield server
+    res.toLayer
   }
 
 }

@@ -1,7 +1,7 @@
 package com.jc.subscription.module.metrics
 
 import com.jc.subscription.model.config.PrometheusConfig
-import zio.ZIO
+import zio.{Has, ZIO}
 import zio.metrics.prometheus.Registry
 import zio.metrics.prometheus.exporters.Exporters
 import zio.metrics.prometheus.helpers.{getCurrentRegistry, http, initializeDefaultExports}
@@ -16,5 +16,9 @@ object PrometheusMetricsExporter {
       _ <- initializeDefaultExports(registry)
       prometheusServer <- http(registry, config.port)
     } yield prometheusServer
+  }
+
+  val run: ZIO[Has[PrometheusConfig] with Exporters with Registry, Throwable, PrometheusHttpServer] = {
+    ZIO.service[PrometheusConfig].flatMap(create)
   }
 }
