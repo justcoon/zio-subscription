@@ -33,9 +33,7 @@ object DbConfig {
 final case class CdcConfig(offsetStoreDir: OffsetDir)
 
 object CdcConfig {
-
-  implicit val cdcConfigDescription: _root_.zio.config.ConfigDescriptor[CdcConfig] =
-    descriptor[CdcConfig].mapKey(toKebabCase)
+  implicit val cdcConfigDescription = descriptor[CdcConfig].mapKey(toKebabCase)
 }
 
 final case class DbCdcConfig(cdc: CdcConfig, connection: JAsyncContextConfig[PostgreSQLConnection])

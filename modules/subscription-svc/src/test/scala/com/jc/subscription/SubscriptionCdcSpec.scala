@@ -32,35 +32,7 @@ object SubscriptionCdcSpec extends DefaultRunnableSpec {
     with SubscriptionDomain with SubscriptionEventProducer with CdcHandler
     with Has[Queue[SubscriptionEventRepo.SubscriptionEvent]]
 
-  private class TestSubscriptionEventProducerService(
-    queue: Queue[SubscriptionEventRepo.SubscriptionEvent],
-    logger: Logger[String])
-      extends SubscriptionEventProducer.Service {
-
-    override def send(events: Chunk[SubscriptionEventRepo.SubscriptionEvent]): Task[Unit] = {
-      logger.debug(s"sending events: ${events.mkString(",")}") *>
-        queue.offerAll(events).unit
-    }
-
-    override def processAndSend(
-      events: Chunk[Either[Throwable, SubscriptionEventRepo.SubscriptionEvent]]): Task[Unit] = {
-      val validEvents = events.collect { case Right(e) => e }
-
-      send(validEvents)
-    }
-  }
-
   private val testConfig = AppConfig.readConfig[AppCdcConfig](ConfigSource.fromResourcePath.memoize).toLayer
-
-  private val testProducer
-    : ZLayer[Has[Queue[SubscriptionEventRepo.SubscriptionEvent]] with Logging, Throwable, SubscriptionEventProducer] = {
-    val res = for {
-      logger <- ZIO.service[Logger[String]]
-      queue <- ZIO.service[Queue[SubscriptionEventRepo.SubscriptionEvent]]
-    } yield new TestSubscriptionEventProducerService(queue, logger)
-
-    res.toLayer
-  }
 
   private val testQueue: ZLayer[Any, Nothing, Has[Queue[SubscriptionEventRepo.SubscriptionEvent]]] =
     Queue.unbounded[SubscriptionEventRepo.SubscriptionEvent].toLayer
@@ -78,7 +50,7 @@ object SubscriptionCdcSpec extends DefaultRunnableSpec {
         SubscriptionEventRepo.live,
         SubscriptionDomain.live,
         testQueue,
-        testProducer,
+        TestSubscriptionEventProducer.live,
         testConfig.narrow(_.db.connection),
         PostgresCdc.create(SubscriptionEventProducer.processAndSend)
       )

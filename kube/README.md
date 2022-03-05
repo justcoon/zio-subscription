@@ -22,6 +22,8 @@ kubectl exec --stdin --tty postgres-sts-0 -- /bin/bash
 
 # subscription service
 
+stafulset - offsets for CDC are stored in file, replica with index 0 using `all` app mode, others `svc` app mode
+
 minikube docker env
 ```
 eval $(minikube -p minikube docker-env)

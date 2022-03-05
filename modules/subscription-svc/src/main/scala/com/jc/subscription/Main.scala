@@ -13,7 +13,6 @@ import com.jc.subscription.module.event.SubscriptionEventProducer
 import com.jc.subscription.module.kafka.KafkaProducer
 import com.jc.subscription.module.metrics.PrometheusMetricsExporter
 import com.jc.subscription.module.repo.{SubscriptionEventRepo, SubscriptionRepo}
-import com.typesafe.config.{Config, ConfigFactory}
 import zio._
 import zio.blocking.Blocking
 import zio.clock.Clock
@@ -95,8 +94,8 @@ object Main extends App {
   type CdcAppEnvironment = CommonEnvironment
     with DbConnection with SubscriptionEventProducer with Has[HttpServer] with CdcHandler
 
-  private def createCdcAppConfigAndLayer(config: ConfigSource): Task[(AppAllConfig, TaskLayer[CdcAppEnvironment])] = {
-    AppConfig.readConfig[AppAllConfig](config).map { appConfig =>
+  private def createCdcAppConfigAndLayer(config: ConfigSource): Task[(AppCdcConfig, TaskLayer[CdcAppEnvironment])] = {
+    AppConfig.readConfig[AppCdcConfig](config).map { appConfig =>
       appConfig -> ZLayer.fromMagic[CdcAppEnvironment](
         commonLayer,
         DbConnection.create(appConfig.db.connection),
