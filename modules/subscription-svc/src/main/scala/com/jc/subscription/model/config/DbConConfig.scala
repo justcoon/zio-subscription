@@ -12,9 +12,7 @@ sealed trait DbConfig {
   def connection: JAsyncContextConfig[PostgreSQLConnection]
 }
 
-final case class DbConConfig(connection: JAsyncContextConfig[PostgreSQLConnection]) extends DbConfig
-
-object DbConConfig {
+object DbConfig {
 
   import scala.jdk.CollectionConverters._
 
@@ -33,7 +31,12 @@ object DbConConfig {
     )
 
   implicit val jacDescription = Descriptor[JAsyncContextConfig[PostgreSQLConnection]](jacConfigDescription, true)
+}
 
+final case class DbConConfig(connection: JAsyncContextConfig[PostgreSQLConnection]) extends DbConfig
+
+object DbConConfig {
+  import DbConfig.jacDescription
   implicit val dbConfigDescription: ConfigDescriptor[DbConConfig] = descriptor[DbConConfig].mapKey(toKebabCase)
 }
 
@@ -47,6 +50,6 @@ object CdcConfig {
 final case class DbCdcConfig(cdc: CdcConfig, connection: JAsyncContextConfig[PostgreSQLConnection]) extends DbConfig
 
 object DbCdcConfig {
-  import DbConConfig.jacDescription
+  import DbConfig.jacDescription
   implicit val dbCdcConfigDescription: ConfigDescriptor[DbCdcConfig] = descriptor[DbCdcConfig].mapKey(toKebabCase)
 }
