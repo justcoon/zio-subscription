@@ -128,7 +128,7 @@ object Main extends App {
 
       runtime: ZIO[CommonEnvironment, Throwable, Nothing] = ZIO.runtime[CommonEnvironment].flatMap {
         implicit rts: Runtime[CommonEnvironment] =>
-          Logging.debug(s"app mode: ${appConfig.getClass.getSimpleName.substring(0, 6)}") *>
+          Logging.debug(s"app mode: ${appConfig.mode}") *>
             PrometheusMetricsExporter.create(appConfig.prometheus) *>
             ZIO.never
       }

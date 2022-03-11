@@ -8,6 +8,7 @@ import ConfigDescriptor._
 sealed trait AppConfig {
   def restApi: HttpApiConfig
   def prometheus: PrometheusConfig
+  def mode: AppMode
 }
 
 object AppConfig {
@@ -25,7 +26,9 @@ final case class AppAllConfig(
   prometheus: PrometheusConfig,
   jwt: JwtConfig,
   db: DbCdcConfig)
-    extends AppConfig
+    extends AppConfig {
+  override val mode = AppMode.all
+}
 
 object AppAllConfig {
 
@@ -38,7 +41,9 @@ object AppAllConfig {
 }
 
 final case class AppCdcConfig(kafka: KafkaConfig, restApi: HttpApiConfig, prometheus: PrometheusConfig, db: DbCdcConfig)
-    extends AppConfig
+    extends AppConfig {
+  override val mode = AppMode.cdc
+}
 
 object AppCdcConfig {
 
@@ -54,7 +59,9 @@ final case class AppSvcConfig(
   prometheus: PrometheusConfig,
   jwt: JwtConfig,
   db: DbConfig)
-    extends AppConfig
+    extends AppConfig {
+  override val mode = AppMode.svc
+}
 
 object AppSvcConfig {
 

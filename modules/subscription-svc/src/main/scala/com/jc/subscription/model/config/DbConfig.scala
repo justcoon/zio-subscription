@@ -14,10 +14,13 @@ object DbConfig {
 
   import scala.jdk.CollectionConverters._
 
-  private val cd: ConfigDescriptor[JAsyncContextConfig[PostgreSQLConnection]] = ConfigDescriptor
+  private val jacConfigDescription: ConfigDescriptor[JAsyncContextConfig[PostgreSQLConnection]] = ConfigDescriptor
     .map[String](ConfigDescriptor.string)
     .transform[JAsyncContextConfig[PostgreSQLConnection]](
-      cfg => PostgresJAsyncContextConfig(ConfigFactory.parseMap(cfg.asJava)),
+      { cfg =>
+        val config = ConfigFactory.parseMap(cfg.asJava)
+        PostgresJAsyncContextConfig(config)
+      },
       {
         case cfg: PostgresJAsyncContextConfig =>
           cfg.config.entrySet().asScala.map(e => e.getKey -> e.getValue.toString).toMap
@@ -25,20 +28,21 @@ object DbConfig {
       }
     )
 
-  implicit val jacConfigDescription = Descriptor[JAsyncContextConfig[PostgreSQLConnection]](cd, true)
+  implicit val jacDescription = Descriptor[JAsyncContextConfig[PostgreSQLConnection]](jacConfigDescription, true)
 
-  implicit val dbConfigDescription = descriptor[DbConfig].mapKey(toKebabCase)
+  implicit val dbConfigDescription: ConfigDescriptor[DbConfig] = descriptor[DbConfig].mapKey(toKebabCase)
 }
 
 final case class CdcConfig(offsetStoreDir: OffsetDir)
 
 object CdcConfig {
-  implicit val cdcConfigDescription = descriptor[CdcConfig].mapKey(toKebabCase)
+
+  implicit val cdcConfigDescription: ConfigDescriptor[CdcConfig] = descriptor[CdcConfig].mapKey(toKebabCase)
 }
 
 final case class DbCdcConfig(cdc: CdcConfig, connection: JAsyncContextConfig[PostgreSQLConnection])
 
 object DbCdcConfig {
-  import DbConfig.jacConfigDescription
-  implicit val dbCdcConfigDescription = descriptor[DbCdcConfig].mapKey(toKebabCase)
+  import DbConfig.jacDescription
+  implicit val dbCdcConfigDescription: ConfigDescriptor[DbCdcConfig] = descriptor[DbCdcConfig].mapKey(toKebabCase)
 }
