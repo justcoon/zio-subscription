@@ -7,7 +7,7 @@ import com.jc.cdc.CdcHandler
 import com.jc.logging.{LogbackLoggingSystem, LoggingSystem}
 import com.jc.logging.api.{LoggingSystemGrpcApi, LoggingSystemGrpcApiHandler}
 import com.jc.subscription.module.db.cdc.PostgresCdc
-import com.jc.subscription.module.db.DbConnection
+import com.jc.subscription.module.db.{DbConnection, DbInit}
 import com.jc.subscription.module.domain.SubscriptionDomain
 import com.jc.subscription.module.event.SubscriptionEventProducer
 import com.jc.subscription.module.kafka.KafkaProducer
@@ -129,6 +129,7 @@ object Main extends App {
       runtime: ZIO[CommonEnvironment, Throwable, Nothing] = ZIO.runtime[CommonEnvironment].flatMap {
         implicit rts: Runtime[CommonEnvironment] =>
           Logging.debug(s"app mode: ${appConfig.mode}") *>
+            DbInit.run(appConfig.db.connection) *>
             PrometheusMetricsExporter.create(appConfig.prometheus) *>
             ZIO.never
       }

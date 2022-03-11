@@ -8,9 +8,13 @@ import zio.config.magnolia.{descriptor, Descriptor}
 import zio.config.toKebabCase
 import zio.config.ConfigDescriptor
 
-final case class DbConfig(connection: JAsyncContextConfig[PostgreSQLConnection])
+sealed trait DbConfig {
+  def connection: JAsyncContextConfig[PostgreSQLConnection]
+}
 
-object DbConfig {
+final case class DbConConfig(connection: JAsyncContextConfig[PostgreSQLConnection]) extends DbConfig
+
+object DbConConfig {
 
   import scala.jdk.CollectionConverters._
 
@@ -30,7 +34,7 @@ object DbConfig {
 
   implicit val jacDescription = Descriptor[JAsyncContextConfig[PostgreSQLConnection]](jacConfigDescription, true)
 
-  implicit val dbConfigDescription: ConfigDescriptor[DbConfig] = descriptor[DbConfig].mapKey(toKebabCase)
+  implicit val dbConfigDescription: ConfigDescriptor[DbConConfig] = descriptor[DbConConfig].mapKey(toKebabCase)
 }
 
 final case class CdcConfig(offsetStoreDir: OffsetDir)
@@ -40,9 +44,9 @@ object CdcConfig {
   implicit val cdcConfigDescription: ConfigDescriptor[CdcConfig] = descriptor[CdcConfig].mapKey(toKebabCase)
 }
 
-final case class DbCdcConfig(cdc: CdcConfig, connection: JAsyncContextConfig[PostgreSQLConnection])
+final case class DbCdcConfig(cdc: CdcConfig, connection: JAsyncContextConfig[PostgreSQLConnection]) extends DbConfig
 
 object DbCdcConfig {
-  import DbConfig.jacDescription
+  import DbConConfig.jacDescription
   implicit val dbCdcConfigDescription: ConfigDescriptor[DbCdcConfig] = descriptor[DbCdcConfig].mapKey(toKebabCase)
 }
