@@ -8,6 +8,7 @@ import ConfigDescriptor._
 sealed trait AppConfig {
   def restApi: HttpApiConfig
   def prometheus: PrometheusConfig
+  def db: DbConfig
   def mode: AppMode
 }
 
@@ -58,7 +59,7 @@ final case class AppSvcConfig(
   restApi: HttpApiConfig,
   prometheus: PrometheusConfig,
   jwt: JwtConfig,
-  db: DbConfig)
+  db: DbConConfig)
     extends AppConfig {
   override val mode = AppMode.svc
 }
@@ -69,5 +70,5 @@ object AppSvcConfig {
     nested("rest-api")(HttpApiConfig.httpConfigDescription) zip
     nested("prometheus")(PrometheusConfig.prometheusConfigDescription) zip
     nested("jwt")(JwtConfig.jwtConfigDescription) zip
-    nested("db")(DbConfig.dbConfigDescription)).to[AppSvcConfig]
+    nested("db")(DbConConfig.dbConfigDescription)).to[AppSvcConfig]
 }

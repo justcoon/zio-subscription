@@ -20,6 +20,7 @@ lazy val Versions = new {
   val pauldijouJwt = "5.0.0"
   val quill = "3.16.3"
   val debezium = "1.8.1.Final"
+  val flyway = "8.5.2"
 }
 
 lazy val library =
@@ -44,9 +45,9 @@ lazy val library =
 
     val chimney = "io.scalaland" %% "chimney" % Versions.chimney
 
-    val zioConfigRefined = "dev.zio" %% "zio-config-refined"       % Versions.zioConfig
+    val zioConfigRefined = "dev.zio" %% "zio-config-refined"   % Versions.zioConfig
     val zioConfigMagnolia = "dev.zio" %% "zio-config-magnolia" % Versions.zioConfig
-    val zioConfigTypesafe = "dev.zio" %% "zio-config-typesafe"     % Versions.zioConfig
+    val zioConfigTypesafe = "dev.zio" %% "zio-config-typesafe" % Versions.zioConfig
 
     val quillPostgres = "io.getquill" %% "quill-jasync-zio-postgres" % Versions.quill
 
@@ -71,6 +72,8 @@ lazy val library =
     val debeziumApi = "io.debezium"               % "debezium-api"                % Versions.debezium
     val debeziumEmbedded = "io.debezium"          % "debezium-embedded"           % Versions.debezium
     val debeziumConnectorPostgres = "io.debezium" % "debezium-connector-postgres" % Versions.debezium
+
+    val flywayCore = "org.flywaydb" % "flyway-core" % Versions.flyway
   }
 
 lazy val `zio-subscription` =
@@ -183,6 +186,7 @@ lazy val `subscription-svc` =
         library.scalapbRuntimeGrpc,
         library.zioKafka,
         library.quillPostgres,
+        library.flywayCore,
         library.randomDataGenerator,
         library.logback,
         library.zioTest,

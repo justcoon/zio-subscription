@@ -4,7 +4,7 @@ import com.jc.cdc.CdcHandler
 import com.jc.subscription.domain.proto.{CreateSubscriptionReq, GetSubscriptionReq}
 import com.jc.subscription.domain.SubscriptionEntity._
 import com.jc.subscription.model.config.{AppCdcConfig, AppConfig}
-import com.jc.subscription.module.db.DbConnection
+import com.jc.subscription.module.db.{DbConnection, DbInit}
 import com.jc.subscription.module.db.cdc.PostgresCdc
 import com.jc.subscription.module.domain.SubscriptionDomain
 import com.jc.subscription.module.event.SubscriptionEventProducer
@@ -17,8 +17,9 @@ import zio.logging.{Logger, Logging}
 import zio.logging.slf4j.Slf4jLogger
 import zio.magic._
 import zio.test.Assertion._
+import zio.test.TestAspect._
 import zio.test._
-import zio.{Chunk, Has, Queue, Task, ZIO, ZLayer}
+import zio.{Has, Queue, ZIO, ZLayer}
 import zio.config._
 import zio.config.syntax._
 import zio.config.typesafe._
@@ -71,5 +72,5 @@ object SubscriptionCdcSpec extends DefaultRunnableSpec {
           events.exists(_.entityId == id))(isTrue)
       }
     }
-  ).provideLayer(layer)
+  ).provideLayer(layer) @@ beforeAll(DbInit.run.provideLayer(testConfig.narrow(_.db.connection)))
 }
