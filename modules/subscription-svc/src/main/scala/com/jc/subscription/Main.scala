@@ -39,7 +39,7 @@ object Main extends ZIOAppDefault {
     AppConfig.readConfig[AppAllConfig](config).map { appConfig =>
       appConfig -> ZLayer.make[AppEnvironment](
         PdiJwtAuthenticator.make(appConfig.jwt),
-        DbConnection.create(appConfig.db.connection),
+        DbConnection.make(appConfig.db.connection),
         LiveSubscriptionRepo.layer,
         LiveSubscriptionEventRepo.layer,
         LiveSubscriptionDomainService.layer,
@@ -64,7 +64,7 @@ object Main extends ZIOAppDefault {
     AppConfig.readConfig[AppSvcConfig](config).map { appConfig =>
       appConfig -> ZLayer.make[SvcAppEnvironment](
         PdiJwtAuthenticator.make(appConfig.jwt),
-        DbConnection.create(appConfig.db.connection),
+        DbConnection.make(appConfig.db.connection),
         LiveSubscriptionRepo.layer,
         LiveSubscriptionEventRepo.layer,
         LiveSubscriptionDomainService.layer,
@@ -82,7 +82,7 @@ object Main extends ZIOAppDefault {
   private def createCdcAppConfigAndLayer(config: ConfigSource): Task[(AppCdcConfig, TaskLayer[CdcAppEnvironment])] = {
     AppConfig.readConfig[AppCdcConfig](config).map { appConfig =>
       appConfig -> ZLayer.make[CdcAppEnvironment](
-        DbConnection.create(appConfig.db.connection),
+        DbConnection.make(appConfig.db.connection),
         KafkaProducer.make(appConfig.kafka),
         LiveSubscriptionEventProducer.create(appConfig.kafka.subscriptionTopic),
         HttpApiServer.create(appConfig.restApi),

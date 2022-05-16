@@ -13,7 +13,7 @@ object DbInit {
   def run(config: JAsyncContextConfig[PostgreSQLConnection]): Task[MigrateResult] = {
     val cc = config.connectionPoolConfiguration
     val url = s"jdbc:postgresql://${cc.getHost}:${cc.getPort}/${cc.getDatabase}"
-    ZIO.fromTry(Try {
+    ZIO.attempt(
       Flyway
         .configure()
         .validateMigrationNaming(true)
@@ -21,7 +21,7 @@ object DbInit {
         .dataSource(url, cc.getUsername, cc.getPassword)
         .load()
         .migrate()
-    })
+    )
   }
 
   def run: ZIO[JAsyncContextConfig[PostgreSQLConnection], Throwable, MigrateResult] =
