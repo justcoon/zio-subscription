@@ -40,7 +40,7 @@ final class LiveSubscriptionEventProducer(topic: String, producer: Producer) ext
 
 object LiveSubscriptionEventProducer {
 
-  def create(topic: String): ZLayer[Producer, Nothing, SubscriptionEventProducer] = {
+  def make(topic: String): ZLayer[Producer, Nothing, SubscriptionEventProducer] = {
     ZLayer.fromZIO(ZIO.service[Producer].map(new LiveSubscriptionEventProducer(topic, _)))
   }
 

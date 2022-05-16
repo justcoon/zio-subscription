@@ -13,7 +13,7 @@ object KafkaProducer {
     }
   }
 
-  val live: ZLayer[KafkaConfig, Throwable, Producer] = {
+  val layer: ZLayer[KafkaConfig, Throwable, Producer] = {
     import eu.timepit.refined.auto._
     ZLayer.scoped {
       for {

@@ -14,6 +14,7 @@ trait SubscriptionRepo[R] extends Repository[R, SubscriptionId, SubscriptionRepo
     id: SubscriptionId,
     address: Option[SubscriptionRepo.Address],
     modifiedAt: Option[Instant]): ZIO[R, Throwable, Boolean]
+
   def updateEmail(id: SubscriptionId, email: String, modifiedAt: Option[Instant]): ZIO[R, Throwable, Boolean]
 }
 

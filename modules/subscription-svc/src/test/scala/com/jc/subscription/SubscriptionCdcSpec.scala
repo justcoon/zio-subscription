@@ -25,7 +25,6 @@ import zio.config.typesafe._
 import zio.logging.backend.SLF4J
 
 import java.util.UUID
-import zio.test.ZIOSpecDefault
 
 object SubscriptionCdcSpec extends ZIOSpecDefault {
 
