@@ -3,24 +3,25 @@ Scope.Global / scalaVersion := "2.13.8"
 
 lazy val Versions = new {
   val kindProjector = "0.13.2"
-  val http4s = "0.23.10"
-  val zio = "1.0.13"
+  val http4s = "0.23.11"
+  val zio = "1.0.14"
   val zioInteropCats = "3.2.9.1"
   val zioLogging = "0.5.14"
   val zioMetrics = "1.0.14"
   val zioKafka = "0.17.5"
-  val zioMagic = "0.3.11"
-  val zioConfig = "2.0.3"
-  val jackson = "2.13.2"
+  val zioMagic = "0.3.12"
+  val zioConfig = "2.0.4"
+  val zioPrelude = "1.0.0-RC8"
+  val jackson = "2.13.3"
   val circe = "0.14.1"
   val randomDataGenerator = "2.9"
   val logback = "1.2.11"
-  val grpc = "1.45.0"
+  val grpc = "1.46.0"
   val chimney = "0.6.1"
   val pauldijouJwt = "5.0.0"
   val quill = "3.16.3"
-  val debezium = "1.8.1.Final"
-  val flyway = "8.5.2"
+  val debezium = "1.9.2.Final"
+  val flyway = "8.5.11"
 }
 
 lazy val library =
@@ -48,6 +49,8 @@ lazy val library =
     val zioConfigRefined = "dev.zio" %% "zio-config-refined"   % Versions.zioConfig
     val zioConfigMagnolia = "dev.zio" %% "zio-config-magnolia" % Versions.zioConfig
     val zioConfigTypesafe = "dev.zio" %% "zio-config-typesafe" % Versions.zioConfig
+
+    val zioPrelude = "dev.zio" %% "zio-prelude" % Versions.zioPrelude
 
     val quillPostgres = "io.getquill" %% "quill-jasync-zio-postgres" % Versions.quill
 
@@ -171,6 +174,7 @@ lazy val `subscription-svc` =
         library.zioLoggingSlf4j,
         library.zioMetricsPrometheus,
         library.zioMagic,
+        library.zioPrelude,
         library.jacksonModuleScala,
         library.http4sCore,
         library.http4sDsl,
