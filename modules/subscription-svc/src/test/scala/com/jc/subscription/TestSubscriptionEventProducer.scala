@@ -4,7 +4,7 @@ import com.jc.subscription.module.event.SubscriptionEventProducer
 import com.jc.subscription.module.repo.SubscriptionEventRepo
 import zio.{Chunk, Queue, Task, ZIO, ZLayer}
 
-class TestSubscriptionEventProducer(queue: Queue[SubscriptionEventRepo.SubscriptionEvent])
+final class TestSubscriptionEventProducer(queue: Queue[SubscriptionEventRepo.SubscriptionEvent])
     extends SubscriptionEventProducer {
 
   override def send(events: Chunk[SubscriptionEventRepo.SubscriptionEvent]): Task[Unit] = {
@@ -14,16 +14,13 @@ class TestSubscriptionEventProducer(queue: Queue[SubscriptionEventRepo.Subscript
 
   override def processAndSend(events: Chunk[Either[Throwable, SubscriptionEventRepo.SubscriptionEvent]]): Task[Unit] = {
     val validEvents = events.collect { case Right(e) => e }
-
     send(validEvents)
   }
 }
 
 object TestSubscriptionEventProducer {
 
-  val live: ZLayer[Queue[SubscriptionEventRepo.SubscriptionEvent], Throwable, SubscriptionEventProducer] = {
-
+  val layer: ZLayer[Queue[SubscriptionEventRepo.SubscriptionEvent], Throwable, SubscriptionEventProducer] =
     ZLayer.fromZIO(
       ZIO.service[Queue[SubscriptionEventRepo.SubscriptionEvent]].map(q => new TestSubscriptionEventProducer(q)))
-  }
 }

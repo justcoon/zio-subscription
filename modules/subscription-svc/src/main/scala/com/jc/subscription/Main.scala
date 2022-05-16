@@ -5,7 +5,7 @@ import com.jc.subscription.module.api.{GrpcApiServer, HttpApiServer, Subscriptio
 import com.jc.auth.{JwtAuthenticator, PdiJwtAuthenticator}
 import com.jc.cdc.CdcHandler
 import com.jc.logging.{LogbackLoggingSystem, LoggingSystem}
-import com.jc.logging.api.{LoggingSystemGrpcApi, LoggingSystemGrpcApiHandler}
+import com.jc.logging.api.LoggingSystemGrpcApiHandler
 import com.jc.subscription.module.db.cdc.PostgresCdc
 import com.jc.subscription.module.db.{DbConnection, DbInit}
 import com.jc.subscription.module.domain.{LiveSubscriptionDomainService, SubscriptionDomainService}
@@ -44,8 +44,8 @@ object Main extends ZIOAppDefault {
         LiveSubscriptionEventRepo.layer,
         LiveSubscriptionDomainService.layer,
         LogbackLoggingSystem.make(),
-        LoggingSystemGrpcApi.live,
-        SubscriptionGrpcApiHandler.live,
+        LoggingSystemGrpcApiHandler.layer,
+        SubscriptionGrpcApiHandler.layer,
         KafkaProducer.make(appConfig.kafka),
         LiveSubscriptionEventProducer.create(appConfig.kafka.subscriptionTopic),
         HttpApiServer.create(appConfig.restApi),
@@ -69,8 +69,8 @@ object Main extends ZIOAppDefault {
         LiveSubscriptionEventRepo.layer,
         LiveSubscriptionDomainService.layer,
         LogbackLoggingSystem.make(),
-        LoggingSystemGrpcApi.live,
-        SubscriptionGrpcApiHandler.live,
+        LoggingSystemGrpcApiHandler.layer,
+        SubscriptionGrpcApiHandler.layer,
         HttpApiServer.create(appConfig.restApi),
         GrpcApiServer.create(appConfig.grpcApi)
       )

@@ -46,7 +46,7 @@ object SubscriptionCdcSpec extends ZIOSpecDefault {
       LiveSubscriptionEventRepo.layer,
       LiveSubscriptionDomainService.layer,
       testQueue,
-      TestSubscriptionEventProducer.live,
+      TestSubscriptionEventProducer.layer,
       testConfig.narrow(_.db.connection),
       PostgresCdc.make(SubscriptionEventProducer.processAndSend)
     ) ++ SLF4J.slf4j(zio.LogLevel.Debug)
