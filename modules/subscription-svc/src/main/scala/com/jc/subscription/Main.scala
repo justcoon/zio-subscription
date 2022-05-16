@@ -9,9 +9,14 @@ import com.jc.logging.api.{LoggingSystemGrpcApi, LoggingSystemGrpcApiHandler}
 import com.jc.subscription.module.db.cdc.PostgresCdc
 import com.jc.subscription.module.db.{DbConnection, DbInit}
 import com.jc.subscription.module.domain.SubscriptionDomain
-import com.jc.subscription.module.event.SubscriptionEventProducer
+import com.jc.subscription.module.event.{LiveSubscriptionEventProducer, SubscriptionEventProducer}
 import com.jc.subscription.module.kafka.KafkaProducer
-import com.jc.subscription.module.repo.{SubscriptionEventRepo, SubscriptionRepo}
+import com.jc.subscription.module.repo.{
+  LiveSubscriptionEventRepo,
+  LiveSubscriptionRepo,
+  SubscriptionEventRepo,
+  SubscriptionRepo
+}
 import zio._
 import zio.config._
 import zio.config.typesafe._
@@ -26,23 +31,23 @@ object Main extends ZIOAppDefault {
   type CommonEnvironment = DbConnection
 
   type AppEnvironment = CommonEnvironment
-    with JwtAuthenticator with SubscriptionRepo with SubscriptionEventRepo with SubscriptionDomain
-    with SubscriptionEventProducer with LoggingSystem with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler
-    with GrpcServer with HttpServer with CdcHandler
+    with JwtAuthenticator with SubscriptionRepo[DbConnection] with SubscriptionEventRepo[DbConnection]
+    with SubscriptionDomain with SubscriptionEventProducer with LoggingSystem with LoggingSystemGrpcApiHandler
+    with SubscriptionGrpcApiHandler with GrpcServer with HttpServer with CdcHandler
 
   private def createAppConfigAndLayer(config: ConfigSource): Task[(AppAllConfig, TaskLayer[AppEnvironment])] = {
     AppConfig.readConfig[AppAllConfig](config).map { appConfig =>
       appConfig -> ZLayer.make[AppEnvironment](
         JwtAuthenticator.create(appConfig.jwt),
         DbConnection.create(appConfig.db.connection),
-        SubscriptionRepo.live,
-        SubscriptionEventRepo.live,
+        LiveSubscriptionRepo.layer,
+        LiveSubscriptionEventRepo.layer,
         SubscriptionDomain.live,
         LogbackLoggingSystem.create(),
         LoggingSystemGrpcApi.live,
         SubscriptionGrpcApiHandler.live,
         KafkaProducer.create(appConfig.kafka),
-        SubscriptionEventProducer.create(appConfig.kafka.subscriptionTopic),
+        LiveSubscriptionEventProducer.create(appConfig.kafka.subscriptionTopic),
         HttpApiServer.create(appConfig.restApi),
         GrpcApiServer.create(appConfig.grpcApi),
         PostgresCdc.create(appConfig.db, SubscriptionEventProducer.processAndSend)
@@ -51,16 +56,17 @@ object Main extends ZIOAppDefault {
   }
 
   type SvcAppEnvironment = CommonEnvironment
-    with JwtAuthenticator with SubscriptionRepo with SubscriptionEventRepo with SubscriptionDomain with LoggingSystem
-    with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler with GrpcServer with HttpServer
+    with JwtAuthenticator with SubscriptionRepo[DbConnection] with SubscriptionEventRepo[DbConnection]
+    with SubscriptionDomain with LoggingSystem with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler
+    with GrpcServer with HttpServer
 
   private def createSvcAppConfigAndLayer(config: ConfigSource): Task[(AppSvcConfig, TaskLayer[SvcAppEnvironment])] = {
     AppConfig.readConfig[AppSvcConfig](config).map { appConfig =>
       appConfig -> ZLayer.make[SvcAppEnvironment](
         JwtAuthenticator.create(appConfig.jwt),
         DbConnection.create(appConfig.db.connection),
-        SubscriptionRepo.live,
-        SubscriptionEventRepo.live,
+        LiveSubscriptionRepo.layer,
+        LiveSubscriptionEventRepo.layer,
         SubscriptionDomain.live,
         LogbackLoggingSystem.create(),
         LoggingSystemGrpcApi.live,
@@ -78,7 +84,7 @@ object Main extends ZIOAppDefault {
       appConfig -> ZLayer.make[CdcAppEnvironment](
         DbConnection.create(appConfig.db.connection),
         KafkaProducer.create(appConfig.kafka),
-        SubscriptionEventProducer.create(appConfig.kafka.subscriptionTopic),
+        LiveSubscriptionEventProducer.create(appConfig.kafka.subscriptionTopic),
         HttpApiServer.create(appConfig.restApi),
         PostgresCdc.create(appConfig.db, SubscriptionEventProducer.processAndSend)
       )

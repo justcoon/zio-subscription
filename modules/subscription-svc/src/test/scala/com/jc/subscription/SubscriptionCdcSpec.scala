@@ -8,7 +8,12 @@ import com.jc.subscription.module.db.{DbConnection, DbInit}
 import com.jc.subscription.module.db.cdc.PostgresCdc
 import com.jc.subscription.module.domain.SubscriptionDomain
 import com.jc.subscription.module.event.SubscriptionEventProducer
-import com.jc.subscription.module.repo.{SubscriptionEventRepo, SubscriptionRepo}
+import com.jc.subscription.module.repo.{
+  LiveSubscriptionEventRepo,
+  LiveSubscriptionRepo,
+  SubscriptionEventRepo,
+  SubscriptionRepo
+}
 import zio._
 import zio.test.Assertion._
 import zio.test.TestAspect._
@@ -25,8 +30,8 @@ import zio.test.ZIOSpecDefault
 object SubscriptionCdcSpec extends ZIOSpecDefault {
 
   type AppEnvironment = DbConnection
-    with SubscriptionRepo with SubscriptionEventRepo with SubscriptionDomain with SubscriptionEventProducer
-    with CdcHandler with Queue[SubscriptionEventRepo.SubscriptionEvent]
+    with SubscriptionRepo[DbConnection] with SubscriptionEventRepo[DbConnection] with SubscriptionDomain
+    with SubscriptionEventProducer with CdcHandler with Queue[SubscriptionEventRepo.SubscriptionEvent]
 
   private val testConfig = ZLayer.fromZIO(AppConfig.readConfig[AppCdcConfig](ConfigSource.fromResourcePath.memoize))
 
@@ -37,8 +42,8 @@ object SubscriptionCdcSpec extends ZIOSpecDefault {
     ZLayer.make[AppEnvironment](
       testConfig.narrow(_.db),
       DbConnection.live,
-      SubscriptionRepo.live,
-      SubscriptionEventRepo.live,
+      LiveSubscriptionRepo.layer,
+      LiveSubscriptionEventRepo.layer,
       SubscriptionDomain.live,
       testQueue,
       TestSubscriptionEventProducer.live,

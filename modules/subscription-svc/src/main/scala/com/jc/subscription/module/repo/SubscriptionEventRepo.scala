@@ -8,11 +8,11 @@ import zio.{ZIO, ZLayer}
 import java.time.Instant
 import java.util.Base64
 
-object SubscriptionEventRepo {
+trait SubscriptionEventRepo[R] {
+  def insert(value: SubscriptionEventRepo.SubscriptionEvent): ZIO[R, Throwable, Boolean]
+}
 
-  trait Service[R] {
-    def insert(value: SubscriptionEvent): ZIO[R, Throwable, Boolean]
-  }
+object SubscriptionEventRepo {
 
   final case class SubscriptionEvent(
     id: String,
@@ -42,22 +42,26 @@ object SubscriptionEventRepo {
       }
   }
 
-  final class LiveService() extends Service[DbConnection] with TaggedEncodings with InstantEncodings {
-    private val ctx = PostgresDbContext
+}
 
-    import ctx._
+final class LiveSubscriptionEventRepo()
+    extends SubscriptionEventRepo[DbConnection] with TaggedEncodings with InstantEncodings {
+  private val ctx = PostgresDbContext
 
-    private val query = quote {
-      querySchema[SubscriptionEvent]("subscription_events")
-    }
+  import ctx._
 
-    override def insert(value: SubscriptionEvent): ZIO[DbConnection, Throwable, Boolean] = {
-      ctx.run(query.insertValue(lift(value))).map(_ > 0)
-    }
+  private val query = quote {
+    querySchema[SubscriptionEventRepo.SubscriptionEvent]("subscription_events")
   }
 
-  val live: ZLayer[Any, Nothing, SubscriptionEventRepo] = {
-    ZLayer.succeed(new LiveService)
+  override def insert(value: SubscriptionEventRepo.SubscriptionEvent): ZIO[DbConnection, Throwable, Boolean] = {
+    ctx.run(query.insertValue(lift(value))).map(_ > 0)
   }
+}
 
+object LiveSubscriptionEventRepo {
+
+  val layer: ZLayer[Any, Nothing, SubscriptionEventRepo[DbConnection]] = {
+    ZLayer.succeed(new LiveSubscriptionEventRepo)
+  }
 }

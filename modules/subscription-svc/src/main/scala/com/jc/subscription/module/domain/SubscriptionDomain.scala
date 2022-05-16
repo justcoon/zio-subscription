@@ -52,8 +52,8 @@ object SubscriptionDomain {
   }
 
   final class LiveService(
-    subscriptionRepo: SubscriptionRepo.Service[DbConnection],
-    subscriptionEventRepo: SubscriptionEventRepo.Service[DbConnection],
+    subscriptionRepo: SubscriptionRepo[DbConnection],
+    subscriptionEventRepo: SubscriptionEventRepo[DbConnection],
     dbConnection: ZioJAsyncConnection)
       extends Service {
     import io.scalaland.chimney.dsl._
@@ -194,11 +194,14 @@ object SubscriptionDomain {
     }
   }
 
-  val live: ZLayer[SubscriptionRepo with SubscriptionEventRepo with DbConnection, Nothing, SubscriptionDomain] = {
+  val live: ZLayer[
+    SubscriptionRepo[DbConnection] with SubscriptionEventRepo[DbConnection] with DbConnection,
+    Nothing,
+    SubscriptionDomain] = {
     val res = for {
       dbConnection <- ZIO.service[ZioJAsyncConnection]
-      subscriptionRepo <- ZIO.service[SubscriptionRepo.Service[DbConnection]]
-      subscriptionEventRepo <- ZIO.service[SubscriptionEventRepo.Service[DbConnection]]
+      subscriptionRepo <- ZIO.service[SubscriptionRepo[DbConnection]]
+      subscriptionEventRepo <- ZIO.service[SubscriptionEventRepo[DbConnection]]
     } yield {
       new LiveService(subscriptionRepo, subscriptionEventRepo, dbConnection)
     }
