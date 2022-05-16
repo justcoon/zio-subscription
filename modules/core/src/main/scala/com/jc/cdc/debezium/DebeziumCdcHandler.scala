@@ -9,21 +9,20 @@ import com.jc.cdc.CdcHandler
 
 import scala.util.{Failure, Success, Try}
 
-object DebeziumCdcHandler {
+final private class DebeziumService(engine: DebeziumEngine[ChangeEvent[String, String]]) extends CdcHandler {
 
-  final private class DebeziumService(engine: DebeziumEngine[ChangeEvent[String, String]]) extends CdcHandler.Service {
-
-    override def start: Task[Unit] = {
-      ZIO.blockingExecutor.map { executor =>
-        executor.unsafeSubmitOrThrow(engine)
-      }
+  override def start: Task[Unit] = {
+    ZIO.blockingExecutor.map { executor =>
+      executor.unsafeSubmitOrThrow(engine)
     }
-
-    override def shutdown: Task[Unit] = {
-      ZIO.attempt(engine.close()).unit
-    }
-
   }
+
+  override def shutdown: Task[Unit] = {
+    ZIO.attempt(engine.close()).unit
+  }
+}
+
+object DebeziumCdcHandler {
 
   private def createChangeConsumer(handler: Chunk[ChangeEvent[String, String]] => Try[Unit]) = {
     new io.debezium.engine.DebeziumEngine.ChangeConsumer[ChangeEvent[String, String]] {
@@ -57,9 +56,9 @@ object DebeziumCdcHandler {
     }
   }
 
-  def create[R](
+  def make[R](
     handler: Chunk[ChangeEvent[String, String]] => ZIO[R, Throwable, Unit]
-  ): ZIO[Configuration with Scope with R, Throwable, CdcHandler.Service] = {
+  ): ZIO[Configuration with Scope with R, Throwable, CdcHandler] = {
     val engine = for {
       r <- ZIO.runtime[R]
       c <- ZIO.service[Configuration]

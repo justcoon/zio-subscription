@@ -12,7 +12,7 @@ object GrpcJwtAuth {
   private val AuthHeader: Metadata.Key[String] =
     Metadata.Key.of(JwtAuthenticator.AuthHeader, Metadata.ASCII_STRING_MARSHALLER)
 
-  def authenticated(authenticator: JwtAuthenticator.Service): ZIO[RequestContext, Status, String] = {
+  def authenticated(authenticator: JwtAuthenticator): ZIO[RequestContext, Status, String] = {
     for {
       ctx <- ZIO.service[scalapb.zio_grpc.RequestContext]
       maybeHeader <- ctx.metadata.get(AuthHeader)

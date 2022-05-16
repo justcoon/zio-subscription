@@ -5,12 +5,12 @@ import io.debezium.config.Configuration
 import io.debezium.engine.ChangeEvent
 import zio.{Chunk, Scope, Task, ZIO}
 
-object CdcHandler {
+trait CdcHandler {
+  def start: Task[Unit]
+  def shutdown: Task[Unit]
+}
 
-  trait Service {
-    def start: Task[Unit]
-    def shutdown: Task[Unit]
-  }
+object CdcHandler {
 
   def postgresTypeHandler[R, T](handler: Chunk[Either[Throwable, T]] => ZIO[R, Throwable, Unit])(implicit
     decoder: io.circe.Decoder[T]): Chunk[ChangeEvent[String, String]] => ZIO[R, Throwable, Unit] = { events =>
@@ -18,9 +18,9 @@ object CdcHandler {
     handler(typeEvents)
   }
 
-  def create[R](handler: Chunk[ChangeEvent[String, String]] => ZIO[R, Throwable, Unit])
-    : ZIO[Configuration with Scope with R, Throwable, Service] = {
-    DebeziumCdcHandler.create[R](handler)
+  def make[R](handler: Chunk[ChangeEvent[String, String]] => ZIO[R, Throwable, Unit])
+    : ZIO[Configuration with Scope with R, Throwable, CdcHandler] = {
+    DebeziumCdcHandler.make[R](handler)
   }
 
 }

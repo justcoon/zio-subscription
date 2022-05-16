@@ -6,7 +6,7 @@ import com.jc.subscription.domain.SubscriptionEntity._
 import com.jc.subscription.model.config.{AppCdcConfig, AppConfig}
 import com.jc.subscription.module.db.{DbConnection, DbInit}
 import com.jc.subscription.module.db.cdc.PostgresCdc
-import com.jc.subscription.module.domain.SubscriptionDomain
+import com.jc.subscription.module.domain.{LiveSubscriptionDomainService, SubscriptionDomainService}
 import com.jc.subscription.module.event.SubscriptionEventProducer
 import com.jc.subscription.module.repo.{
   LiveSubscriptionEventRepo,
@@ -30,7 +30,7 @@ import zio.test.ZIOSpecDefault
 object SubscriptionCdcSpec extends ZIOSpecDefault {
 
   type AppEnvironment = DbConnection
-    with SubscriptionRepo[DbConnection] with SubscriptionEventRepo[DbConnection] with SubscriptionDomain
+    with SubscriptionRepo[DbConnection] with SubscriptionEventRepo[DbConnection] with SubscriptionDomainService
     with SubscriptionEventProducer with CdcHandler with Queue[SubscriptionEventRepo.SubscriptionEvent]
 
   private val testConfig = ZLayer.fromZIO(AppConfig.readConfig[AppCdcConfig](ConfigSource.fromResourcePath.memoize))
@@ -44,11 +44,11 @@ object SubscriptionCdcSpec extends ZIOSpecDefault {
       DbConnection.live,
       LiveSubscriptionRepo.layer,
       LiveSubscriptionEventRepo.layer,
-      SubscriptionDomain.live,
+      LiveSubscriptionDomainService.layer,
       testQueue,
       TestSubscriptionEventProducer.live,
       testConfig.narrow(_.db.connection),
-      PostgresCdc.create(SubscriptionEventProducer.processAndSend)
+      PostgresCdc.make(SubscriptionEventProducer.processAndSend)
     ) ++ SLF4J.slf4j(zio.LogLevel.Debug)
 
   override def spec = suite("SubscriptionCdcSpec")(
@@ -56,8 +56,9 @@ object SubscriptionCdcSpec extends ZIOSpecDefault {
       val id = UUID.randomUUID().toString.asSubscriptionId
       for {
         queue <- ZIO.service[Queue[SubscriptionEventRepo.SubscriptionEvent]]
-        cr <- SubscriptionDomain.createSubscription(CreateSubscriptionReq(id, "user1".asUserId, "user1@email.com"))
-        gr <- SubscriptionDomain.getSubscription(GetSubscriptionReq(id))
+        cr <- SubscriptionDomainService.createSubscription(
+          CreateSubscriptionReq(id, "user1".asUserId, "user1@email.com"))
+        gr <- SubscriptionDomainService.getSubscription(GetSubscriptionReq(id))
         _ <- ZIO.sleep(2.seconds)
         events <- queue.takeAll
       } yield {

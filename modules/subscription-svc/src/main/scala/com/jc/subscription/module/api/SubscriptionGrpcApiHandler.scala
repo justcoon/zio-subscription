@@ -17,7 +17,7 @@ import com.jc.subscription.domain.proto.{
   UpdateSubscriptionEmailRes
 }
 import com.jc.subscription.domain.proto.ZioSubscriptionApi.RCSubscriptionApiService
-import com.jc.subscription.module.domain.SubscriptionDomain
+import com.jc.subscription.module.domain.SubscriptionDomainService
 import io.grpc.Status
 import scalapb.zio_grpc.RequestContext
 import zio.{ZIO, ZLayer}
@@ -44,8 +44,8 @@ object SubscriptionGrpcApiHandler {
   }
 
   final class LiveSubscriptionApiService(
-    subscriptionService: SubscriptionDomain.Service,
-    jwtAuthenticator: JwtAuthenticator.Service)
+    subscriptionService: SubscriptionDomainService,
+    jwtAuthenticator: JwtAuthenticator)
       extends RCSubscriptionApiService[Any] {
 
     private val authenticated = GrpcJwtAuth.authenticated(jwtAuthenticator)
@@ -122,10 +122,10 @@ object SubscriptionGrpcApiHandler {
     }
   }
 
-  val live: ZLayer[SubscriptionDomain with JwtAuthenticator, Nothing, SubscriptionGrpcApiHandler] = {
+  val live: ZLayer[SubscriptionDomainService with JwtAuthenticator, Nothing, SubscriptionGrpcApiHandler] = {
     val res = for {
-      jwtAuth <- ZIO.service[JwtAuthenticator.Service]
-      service <- ZIO.service[SubscriptionDomain.Service]
+      jwtAuth <- ZIO.service[JwtAuthenticator]
+      service <- ZIO.service[SubscriptionDomainService]
     } yield {
       new LiveSubscriptionApiService(service, jwtAuth)
     }

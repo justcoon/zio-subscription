@@ -9,7 +9,7 @@ object HttpJwtAuth {
 
   private val AuthHeader = CIString(JwtAuthenticator.AuthHeader)
 
-  def authenticated(headers: Headers, authenticator: JwtAuthenticator.Service): ZIO[Any, Status, String] = {
+  def authenticated(headers: Headers, authenticator: JwtAuthenticator): ZIO[Any, Status, String] = {
     for {
       rawToken <- ZIO.getOrFailWith(Status.Unauthorized)(headers.get(AuthHeader).map(_.head))
       maybeSubject <- authenticator.authenticated(JwtAuthenticator.sanitizeBearerAuthToken(rawToken.value))

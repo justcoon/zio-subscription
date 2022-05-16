@@ -6,7 +6,7 @@ import zio.kafka.producer.{Producer, ProducerSettings}
 
 object KafkaProducer {
 
-  def create(config: KafkaConfig): ZLayer[Any, Throwable, Producer] = {
+  def make(config: KafkaConfig): ZLayer[Any, Throwable, Producer] = {
     import eu.timepit.refined.auto._
     ZLayer.scoped {
       Producer.make(ProducerSettings(config.addresses))

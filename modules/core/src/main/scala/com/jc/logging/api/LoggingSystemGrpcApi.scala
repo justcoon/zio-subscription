@@ -36,9 +36,7 @@ object LoggingSystemGrpcApi {
     )
   )
 
-  final case class LiveLoggingSystemGrpcService(
-    loggingSystem: LoggingSystem.Service,
-    authenticator: JwtAuthenticator.Service)
+  final case class LiveLoggingSystemGrpcService(loggingSystem: LoggingSystem, authenticator: JwtAuthenticator)
       extends RCLoggingSystemApiService[Any] {
 
     def getSupportedLogLevels: UIO[Seq[LogLevel]] =
@@ -88,8 +86,8 @@ object LoggingSystemGrpcApi {
   val live: ZLayer[LoggingSystem with JwtAuthenticator, Nothing, LoggingSystemGrpcApiHandler] = {
     ZLayer.fromZIO {
       for {
-        loggingSystem <- ZIO.service[LoggingSystem.Service]
-        authenticator <- ZIO.service[JwtAuthenticator.Service]
+        loggingSystem <- ZIO.service[LoggingSystem]
+        authenticator <- ZIO.service[JwtAuthenticator]
       } yield LiveLoggingSystemGrpcService(loggingSystem, authenticator)
     }
   }

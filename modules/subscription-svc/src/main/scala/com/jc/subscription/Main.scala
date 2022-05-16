@@ -2,13 +2,13 @@ package com.jc.subscription
 
 import com.jc.subscription.model.config.{AppAllConfig, AppCdcConfig, AppConfig, AppMode, AppSvcConfig}
 import com.jc.subscription.module.api.{GrpcApiServer, HttpApiServer, SubscriptionGrpcApiHandler}
-import com.jc.auth.JwtAuthenticator
+import com.jc.auth.{JwtAuthenticator, PdiJwtAuthenticator}
 import com.jc.cdc.CdcHandler
 import com.jc.logging.{LogbackLoggingSystem, LoggingSystem}
 import com.jc.logging.api.{LoggingSystemGrpcApi, LoggingSystemGrpcApiHandler}
 import com.jc.subscription.module.db.cdc.PostgresCdc
 import com.jc.subscription.module.db.{DbConnection, DbInit}
-import com.jc.subscription.module.domain.SubscriptionDomain
+import com.jc.subscription.module.domain.{LiveSubscriptionDomainService, SubscriptionDomainService}
 import com.jc.subscription.module.event.{LiveSubscriptionEventProducer, SubscriptionEventProducer}
 import com.jc.subscription.module.kafka.KafkaProducer
 import com.jc.subscription.module.repo.{
@@ -32,43 +32,43 @@ object Main extends ZIOAppDefault {
 
   type AppEnvironment = CommonEnvironment
     with JwtAuthenticator with SubscriptionRepo[DbConnection] with SubscriptionEventRepo[DbConnection]
-    with SubscriptionDomain with SubscriptionEventProducer with LoggingSystem with LoggingSystemGrpcApiHandler
+    with SubscriptionDomainService with SubscriptionEventProducer with LoggingSystem with LoggingSystemGrpcApiHandler
     with SubscriptionGrpcApiHandler with GrpcServer with HttpServer with CdcHandler
 
   private def createAppConfigAndLayer(config: ConfigSource): Task[(AppAllConfig, TaskLayer[AppEnvironment])] = {
     AppConfig.readConfig[AppAllConfig](config).map { appConfig =>
       appConfig -> ZLayer.make[AppEnvironment](
-        JwtAuthenticator.create(appConfig.jwt),
+        PdiJwtAuthenticator.make(appConfig.jwt),
         DbConnection.create(appConfig.db.connection),
         LiveSubscriptionRepo.layer,
         LiveSubscriptionEventRepo.layer,
-        SubscriptionDomain.live,
-        LogbackLoggingSystem.create(),
+        LiveSubscriptionDomainService.layer,
+        LogbackLoggingSystem.make(),
         LoggingSystemGrpcApi.live,
         SubscriptionGrpcApiHandler.live,
-        KafkaProducer.create(appConfig.kafka),
+        KafkaProducer.make(appConfig.kafka),
         LiveSubscriptionEventProducer.create(appConfig.kafka.subscriptionTopic),
         HttpApiServer.create(appConfig.restApi),
         GrpcApiServer.create(appConfig.grpcApi),
-        PostgresCdc.create(appConfig.db, SubscriptionEventProducer.processAndSend)
+        PostgresCdc.make(appConfig.db, SubscriptionEventProducer.processAndSend)
       )
     }
   }
 
   type SvcAppEnvironment = CommonEnvironment
     with JwtAuthenticator with SubscriptionRepo[DbConnection] with SubscriptionEventRepo[DbConnection]
-    with SubscriptionDomain with LoggingSystem with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler
+    with SubscriptionDomainService with LoggingSystem with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler
     with GrpcServer with HttpServer
 
   private def createSvcAppConfigAndLayer(config: ConfigSource): Task[(AppSvcConfig, TaskLayer[SvcAppEnvironment])] = {
     AppConfig.readConfig[AppSvcConfig](config).map { appConfig =>
       appConfig -> ZLayer.make[SvcAppEnvironment](
-        JwtAuthenticator.create(appConfig.jwt),
+        PdiJwtAuthenticator.make(appConfig.jwt),
         DbConnection.create(appConfig.db.connection),
         LiveSubscriptionRepo.layer,
         LiveSubscriptionEventRepo.layer,
-        SubscriptionDomain.live,
-        LogbackLoggingSystem.create(),
+        LiveSubscriptionDomainService.layer,
+        LogbackLoggingSystem.make(),
         LoggingSystemGrpcApi.live,
         SubscriptionGrpcApiHandler.live,
         HttpApiServer.create(appConfig.restApi),
@@ -83,10 +83,10 @@ object Main extends ZIOAppDefault {
     AppConfig.readConfig[AppCdcConfig](config).map { appConfig =>
       appConfig -> ZLayer.make[CdcAppEnvironment](
         DbConnection.create(appConfig.db.connection),
-        KafkaProducer.create(appConfig.kafka),
+        KafkaProducer.make(appConfig.kafka),
         LiveSubscriptionEventProducer.create(appConfig.kafka.subscriptionTopic),
         HttpApiServer.create(appConfig.restApi),
-        PostgresCdc.create(appConfig.db, SubscriptionEventProducer.processAndSend)
+        PostgresCdc.make(appConfig.db, SubscriptionEventProducer.processAndSend)
       )
     }
   }
