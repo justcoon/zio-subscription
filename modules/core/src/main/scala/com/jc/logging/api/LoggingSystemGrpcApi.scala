@@ -15,7 +15,7 @@ import com.jc.logging.proto.{
 import com.jc.logging.proto.ZioLoggingSystemApi.RCLoggingSystemApiService
 import io.grpc.Status
 import scalapb.zio_grpc.RequestContext
-import zio.{Has, UIO, ZIO, ZLayer}
+import zio.{UIO, ZIO, ZLayer}
 
 object LoggingSystemGrpcApi {
 
@@ -54,7 +54,7 @@ object LoggingSystemGrpcApi {
       )
 
     override def setLoggerConfiguration(
-      request: SetLoggerConfigurationReq): ZIO[Any with Has[RequestContext], Status, LoggerConfigurationRes] = {
+      request: SetLoggerConfigurationReq): ZIO[Any with RequestContext, Status, LoggerConfigurationRes] = {
       for {
         _ <- GrpcJwtAuth.authenticated(authenticator)
         res <- loggingSystem.setLogLevel(request.name, request.level.flatMap(logLevelMapping.fromLogger.get))
@@ -67,7 +67,7 @@ object LoggingSystemGrpcApi {
     }
 
     override def getLoggerConfiguration(
-      request: GetLoggerConfigurationReq): ZIO[Any with Has[RequestContext], Status, LoggerConfigurationRes] = {
+      request: GetLoggerConfigurationReq): ZIO[Any with RequestContext, Status, LoggerConfigurationRes] = {
       for {
         _ <- GrpcJwtAuth.authenticated(authenticator)
         levels <- getSupportedLogLevels
@@ -76,7 +76,7 @@ object LoggingSystemGrpcApi {
     }
 
     override def getLoggerConfigurations(
-      request: GetLoggerConfigurationsReq): ZIO[Any with Has[RequestContext], Status, LoggerConfigurationsRes] = {
+      request: GetLoggerConfigurationsReq): ZIO[Any with RequestContext, Status, LoggerConfigurationsRes] = {
       for {
         _ <- GrpcJwtAuth.authenticated(authenticator)
         levels <- getSupportedLogLevels
@@ -85,9 +85,12 @@ object LoggingSystemGrpcApi {
     }
   }
 
-  val live: ZLayer[LoggingSystem with JwtAuthenticator, Nothing, LoggingSystemGrpcApiHandler] =
-    ZLayer.fromServices[LoggingSystem.Service, JwtAuthenticator.Service, RCLoggingSystemApiService[Any]] {
-      (loggingSystem, authenticator) =>
-        LiveLoggingSystemGrpcService(loggingSystem, authenticator)
+  val live: ZLayer[LoggingSystem with JwtAuthenticator, Nothing, LoggingSystemGrpcApiHandler] = {
+    ZLayer.fromZIO {
+      for {
+        loggingSystem <- ZIO.service[LoggingSystem.Service]
+        authenticator <- ZIO.service[JwtAuthenticator.Service]
+      } yield LiveLoggingSystemGrpcService(loggingSystem, authenticator)
     }
+  }
 }

@@ -4,14 +4,13 @@ Scope.Global / scalaVersion := "2.13.8"
 lazy val Versions = new {
   val kindProjector = "0.13.2"
   val http4s = "0.23.11"
-  val zio = "1.0.14"
-  val zioInteropCats = "3.2.9.1"
-  val zioLogging = "0.5.14"
+  val zio = "2.0.0-RC6"
+  val zioInteropCats = "3.3.0-RC7"
+  val zioLogging = "2.0.0-RC10"
   val zioMetrics = "1.0.14"
-  val zioKafka = "0.17.5"
-  val zioMagic = "0.3.12"
-  val zioConfig = "2.0.4"
-  val zioPrelude = "1.0.0-RC8"
+  val zioKafka = "2.0.0-M3"
+  val zioConfig = "3.0.0-RC9"
+  val zioPrelude = "1.0.0-RC14"
   val jackson = "2.13.3"
   val circe = "0.14.1"
   val randomDataGenerator = "2.9"
@@ -19,7 +18,7 @@ lazy val Versions = new {
   val grpc = "1.46.0"
   val chimney = "0.6.1"
   val pauldijouJwt = "5.0.0"
-  val quill = "3.16.3"
+  val quill = "3.17.0-RC4"
   val debezium = "1.9.2.Final"
   val flyway = "8.5.11"
 }
@@ -32,7 +31,6 @@ lazy val library =
     val zioInteropCats = "dev.zio" %% "zio-interop-cats"                              % Versions.zioInteropCats
     val zioLoggingSlf4j = "dev.zio" %% "zio-logging-slf4j"                            % Versions.zioLogging
     val zioMetricsPrometheus = "dev.zio" %% "zio-metrics-prometheus"                  % Versions.zioMetrics
-    val zioMagic = "io.github.kitlangton" %% "zio-magic"                              % Versions.zioMagic
     val zioKafka = "dev.zio" %% "zio-kafka"                                           % Versions.zioKafka
     val jacksonModuleScala = "com.fasterxml.jackson.module" %% "jackson-module-scala" % Versions.jackson
     val http4sCore = "org.http4s" %% "http4s-core"                                    % Versions.http4s
@@ -172,8 +170,6 @@ lazy val `subscription-svc` =
         library.zioStreams,
         library.zioInteropCats,
         library.zioLoggingSlf4j,
-        library.zioMetricsPrometheus,
-        library.zioMagic,
         library.zioPrelude,
         library.jacksonModuleScala,
         library.http4sCore,

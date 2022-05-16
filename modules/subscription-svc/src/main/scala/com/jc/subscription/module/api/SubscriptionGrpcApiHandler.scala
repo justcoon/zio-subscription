@@ -20,7 +20,7 @@ import com.jc.subscription.domain.proto.ZioSubscriptionApi.RCSubscriptionApiServ
 import com.jc.subscription.module.domain.SubscriptionDomain
 import io.grpc.Status
 import scalapb.zio_grpc.RequestContext
-import zio.{Has, ZIO, ZLayer}
+import zio.{ZIO, ZLayer}
 
 object SubscriptionGrpcApiHandler {
 
@@ -51,7 +51,7 @@ object SubscriptionGrpcApiHandler {
     private val authenticated = GrpcJwtAuth.authenticated(jwtAuthenticator)
 
     override def getSubscription(
-      request: GetSubscriptionReq): ZIO[Any with Has[RequestContext], Status, GetSubscriptionRes] = {
+      request: GetSubscriptionReq): ZIO[Any with RequestContext, Status, GetSubscriptionRes] = {
       for {
         _ <- authenticated
         res <- subscriptionService.getSubscription(request).mapError(toInternalStatus)
@@ -59,10 +59,10 @@ object SubscriptionGrpcApiHandler {
     }
 
     override def createSubscription(
-      request: CreateSubscriptionReq): ZIO[Any with Has[RequestContext], Status, CreateSubscriptionRes] = {
+      request: CreateSubscriptionReq): ZIO[Any with RequestContext, Status, CreateSubscriptionRes] = {
       for {
         _ <- authenticated
-        res <- validated(request).foldM(
+        res <- validated(request).foldZIO(
           e =>
             ZIO.succeed(
               CreateSubscriptionRes(
@@ -74,10 +74,10 @@ object SubscriptionGrpcApiHandler {
     }
 
     override def updateSubscriptionEmail(
-      request: UpdateSubscriptionEmailReq): ZIO[Any with Has[RequestContext], Status, UpdateSubscriptionEmailRes] = {
+      request: UpdateSubscriptionEmailReq): ZIO[Any with RequestContext, Status, UpdateSubscriptionEmailRes] = {
       for {
         _ <- authenticated
-        res <- validated(request).foldM(
+        res <- validated(request).foldZIO(
           e =>
             ZIO.succeed(
               UpdateSubscriptionEmailRes(
@@ -89,11 +89,11 @@ object SubscriptionGrpcApiHandler {
       } yield res
     }
 
-    override def updateSubscriptionAddress(request: UpdateSubscriptionAddressReq)
-      : ZIO[Any with Has[RequestContext], Status, UpdateSubscriptionAddressRes] = {
+    override def updateSubscriptionAddress(
+      request: UpdateSubscriptionAddressReq): ZIO[Any with RequestContext, Status, UpdateSubscriptionAddressRes] = {
       for {
         _ <- authenticated
-        res <- validated(request).foldM(
+        res <- validated(request).foldZIO(
           e =>
             ZIO.succeed(
               UpdateSubscriptionAddressRes(
@@ -106,7 +106,7 @@ object SubscriptionGrpcApiHandler {
     }
 
     override def removeSubscription(
-      request: RemoveSubscriptionReq): ZIO[Any with Has[RequestContext], Status, RemoveSubscriptionRes] = {
+      request: RemoveSubscriptionReq): ZIO[Any with RequestContext, Status, RemoveSubscriptionRes] = {
       for {
         _ <- authenticated
         res <- subscriptionService.removeSubscription(request).mapError(toInternalStatus)
@@ -114,7 +114,7 @@ object SubscriptionGrpcApiHandler {
     }
 
     override def getSubscriptions(
-      request: GetSubscriptionsReq): ZIO[Any with Has[RequestContext], Status, GetSubscriptionsRes] = {
+      request: GetSubscriptionsReq): ZIO[Any with RequestContext, Status, GetSubscriptionsRes] = {
       for {
         _ <- authenticated
         res <- subscriptionService.getSubscriptions(request).mapError(toInternalStatus)
@@ -129,7 +129,7 @@ object SubscriptionGrpcApiHandler {
     } yield {
       new LiveSubscriptionApiService(service, jwtAuth)
     }
-    res.toLayer
+    ZLayer.fromZIO(res)
   }
 
 }

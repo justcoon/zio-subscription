@@ -4,7 +4,7 @@ import com.github.jasync.sql.db.postgresql.PostgreSQLConnection
 import io.getquill.context.zio.JAsyncContextConfig
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.MigrateResult
-import zio.{Has, Task, ZIO}
+import zio.{Task, ZIO}
 
 import scala.util.Try
 
@@ -24,6 +24,6 @@ object DbInit {
     })
   }
 
-  def run: ZIO[Has[JAsyncContextConfig[PostgreSQLConnection]], Throwable, MigrateResult] =
+  def run: ZIO[JAsyncContextConfig[PostgreSQLConnection], Throwable, MigrateResult] =
     ZIO.service[JAsyncContextConfig[PostgreSQLConnection]].flatMap(c => run(c))
 }

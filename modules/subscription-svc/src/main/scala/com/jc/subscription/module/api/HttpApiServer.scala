@@ -7,14 +7,13 @@ import org.http4s.server.middleware.{Logger => HttpServerLogger}
 import org.http4s.server.{Router, Server}
 import org.http4s.implicits._
 import zio.interop.catz._
-import zio.{Has, RIO, UIO, ZIO, ZLayer, ZManaged}
-import zio.blocking.Blocking
-import zio.clock.Clock
+import zio.{RIO, UIO, ZIO, ZLayer}
+
 import eu.timepit.refined.auto._
 
 object HttpApiServer {
 
-  type ServerEnv = Clock with Blocking
+  type ServerEnv = Any
 
   private def isReady(): UIO[Boolean] = {
     ZIO.succeed(true)
@@ -28,26 +27,26 @@ object HttpApiServer {
   private def httpApp(): HttpApp[RIO[ServerEnv, *]] =
     HttpServerLogger.httpApp[RIO[ServerEnv, *]](true, true)(httpRoutes().orNotFound)
 
-  def create(config: HttpApiConfig): ZLayer[ServerEnv, Throwable, Has[Server]] = {
-    ZLayer.fromManaged(
+  def create(config: HttpApiConfig): ZLayer[ServerEnv, Throwable, Server] = {
+    ZLayer.scoped(
       BlazeServerBuilder[RIO[ServerEnv, *]]
         .bindHttp(config.port, config.address)
         .withHttpApp(httpApp())
         .resource
-        .toManagedZIO
+        .toScopedZIO
     )
   }
 
-  val live: ZLayer[Has[HttpApiConfig] with ServerEnv, Throwable, Has[Server]] = {
+  val live: ZLayer[HttpApiConfig with ServerEnv, Throwable, Server] = {
     val res = for {
-      config <- ZManaged.service[HttpApiConfig]
+      config <- ZIO.service[HttpApiConfig]
       server <- BlazeServerBuilder[RIO[ServerEnv, *]]
         .bindHttp(config.port, config.address)
         .withHttpApp(httpApp())
         .resource
-        .toManagedZIO
+        .toScopedZIO
     } yield server
-    res.toLayer
+    ZLayer.scoped(res)
   }
 
 }

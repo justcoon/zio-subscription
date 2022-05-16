@@ -11,7 +11,7 @@ import scalapb.zio_grpc.{
   ServiceList => GrpcServiceList
 }
 import io.grpc.ServerBuilder
-import zio.{Has, ZLayer, ZManaged}
+import zio.{ZIO, ZLayer}
 import eu.timepit.refined.auto._
 
 object GrpcApiServer {
@@ -23,16 +23,14 @@ object GrpcApiServer {
       GrpcServiceList.access[RCLoggingSystemApiService[Any]].access[RCSubscriptionApiService[Any]])
   }
 
-  val live: ZLayer[
-    Has[HttpApiConfig] with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler,
-    Throwable,
-    GrpcServer] = {
+  val live
+    : ZLayer[HttpApiConfig with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler, Throwable, GrpcServer] = {
     val res = for {
-      config <- ZManaged.service[HttpApiConfig]
+      config <- ZIO.service[HttpApiConfig]
       server <- ManagedServer.fromServiceList(
         ServerBuilder.forPort(config.port),
         GrpcServiceList.access[RCLoggingSystemApiService[Any]].access[RCSubscriptionApiService[Any]])
     } yield server
-    res.toLayer
+    ZLayer.scoped(res)
   }
 }

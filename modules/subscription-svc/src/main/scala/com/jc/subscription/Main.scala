@@ -11,46 +11,28 @@ import com.jc.subscription.module.db.{DbConnection, DbInit}
 import com.jc.subscription.module.domain.SubscriptionDomain
 import com.jc.subscription.module.event.SubscriptionEventProducer
 import com.jc.subscription.module.kafka.KafkaProducer
-import com.jc.subscription.module.metrics.PrometheusMetricsExporter
 import com.jc.subscription.module.repo.{SubscriptionEventRepo, SubscriptionRepo}
 import zio._
-import zio.blocking.Blocking
-import zio.clock.Clock
-import zio.console.Console
-import zio.logging.slf4j.Slf4jLogger
-import zio.logging.Logging
-import zio.metrics.prometheus._
-import zio.metrics.prometheus.exporters.Exporters
-import zio.magic._
 import zio.config._
-import zio.config.syntax._
 import zio.config.typesafe._
 import scalapb.zio_grpc.{Server => GrpcServer}
 import org.http4s.server.{Server => HttpServer}
 import eu.timepit.refined.auto._
+import zio.ZIOAppDefault
+import zio.logging.backend.SLF4J
 
-object Main extends App {
+object Main extends ZIOAppDefault {
 
-  type CommonEnvironment = Clock with Console with Blocking with Logging with Registry with Exporters
-
-  private val commonLayer = ZLayer.fromMagic[CommonEnvironment](
-    Clock.live,
-    Console.live,
-    Blocking.live,
-    Slf4jLogger.make((_, message) => message),
-    Registry.live,
-    Exporters.live
-  )
+  type CommonEnvironment = DbConnection
 
   type AppEnvironment = CommonEnvironment
-    with JwtAuthenticator with DbConnection with SubscriptionRepo with SubscriptionEventRepo with SubscriptionDomain
+    with JwtAuthenticator with SubscriptionRepo with SubscriptionEventRepo with SubscriptionDomain
     with SubscriptionEventProducer with LoggingSystem with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler
-    with GrpcServer with Has[HttpServer] with CdcHandler
+    with GrpcServer with HttpServer with CdcHandler
 
   private def createAppConfigAndLayer(config: ConfigSource): Task[(AppAllConfig, TaskLayer[AppEnvironment])] = {
     AppConfig.readConfig[AppAllConfig](config).map { appConfig =>
-      appConfig -> ZLayer.fromMagic[AppEnvironment](
-        commonLayer,
+      appConfig -> ZLayer.make[AppEnvironment](
         JwtAuthenticator.create(appConfig.jwt),
         DbConnection.create(appConfig.db.connection),
         SubscriptionRepo.live,
@@ -69,14 +51,12 @@ object Main extends App {
   }
 
   type SvcAppEnvironment = CommonEnvironment
-    with JwtAuthenticator with DbConnection with SubscriptionRepo with SubscriptionEventRepo with SubscriptionDomain
-    with LoggingSystem with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler with GrpcServer
-    with Has[HttpServer]
+    with JwtAuthenticator with SubscriptionRepo with SubscriptionEventRepo with SubscriptionDomain with LoggingSystem
+    with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler with GrpcServer with HttpServer
 
   private def createSvcAppConfigAndLayer(config: ConfigSource): Task[(AppSvcConfig, TaskLayer[SvcAppEnvironment])] = {
     AppConfig.readConfig[AppSvcConfig](config).map { appConfig =>
-      appConfig -> ZLayer.fromMagic[SvcAppEnvironment](
-        commonLayer,
+      appConfig -> ZLayer.make[SvcAppEnvironment](
         JwtAuthenticator.create(appConfig.jwt),
         DbConnection.create(appConfig.db.connection),
         SubscriptionRepo.live,
@@ -91,13 +71,11 @@ object Main extends App {
     }
   }
 
-  type CdcAppEnvironment = CommonEnvironment
-    with DbConnection with SubscriptionEventProducer with Has[HttpServer] with CdcHandler
+  type CdcAppEnvironment = CommonEnvironment with SubscriptionEventProducer with HttpServer with CdcHandler
 
   private def createCdcAppConfigAndLayer(config: ConfigSource): Task[(AppCdcConfig, TaskLayer[CdcAppEnvironment])] = {
     AppConfig.readConfig[AppCdcConfig](config).map { appConfig =>
-      appConfig -> ZLayer.fromMagic[CdcAppEnvironment](
-        commonLayer,
+      appConfig -> ZLayer.make[CdcAppEnvironment](
         DbConnection.create(appConfig.db.connection),
         KafkaProducer.create(appConfig.kafka),
         SubscriptionEventProducer.create(appConfig.kafka.subscriptionTopic),
@@ -119,31 +97,17 @@ object Main extends App {
         case AppMode.`cdc` => createCdcAppConfigAndLayer(config)
       }
     } yield res
+
   }
 
-  override def run(args: List[String]): ZIO[ZEnv, Nothing, ExitCode] = {
-    val result: ZIO[zio.ZEnv, Throwable, Nothing] = for {
+  override def run: ZIO[Scope, Any, ExitCode] = appConfigAndLayer.flatMap { case (appConfig, layer) =>
+    val run: ZIO[CommonEnvironment, Throwable, ExitCode] =
+      for {
+        _ <- ZIO.logDebug(s"app mode: ${appConfig.mode}")
+        _ <- DbInit.run(appConfig.db.connection)
+        _ <- ZIO.never
+      } yield ExitCode.success
 
-      (appConfig, appLayer) <- appConfigAndLayer
-
-      runtime: ZIO[CommonEnvironment, Throwable, Nothing] = ZIO.runtime[CommonEnvironment].flatMap {
-        implicit rts: Runtime[CommonEnvironment] =>
-          Logging.debug(s"app mode: ${appConfig.mode}") *>
-            DbInit.run(appConfig.db.connection) *>
-            PrometheusMetricsExporter.create(appConfig.prometheus) *>
-            ZIO.never
-      }
-
-      program <- runtime.provideCustomLayer[Throwable, CommonEnvironment](appLayer)
-    } yield program
-
-    result
-      .foldM(
-        failure = err => {
-          ZIO.accessM[ZEnv](_.get[Console.Service].putStrLn(s"Execution failed with: $err")).ignore *> ZIO.succeed(
-            ExitCode.failure)
-        },
-        success = _ => ZIO.succeed(ExitCode.success)
-      )
+    run.provide(layer ++ SLF4J.slf4j(zio.LogLevel.Debug))
   }
 }

@@ -2,10 +2,9 @@ package com.jc.subscription.module.event
 
 import com.jc.subscription.module.repo.SubscriptionEventRepo.SubscriptionEvent
 import org.apache.kafka.clients.producer.ProducerRecord
-import zio.{Chunk, Has, Task, ZIO, ZLayer}
+import zio.{Chunk, Task, ZIO, ZLayer}
 import zio.kafka.producer.Producer
 import zio.kafka.serde.Serde
-import zio.logging.{Logger, Logging}
 
 object SubscriptionEventProducer {
 
@@ -14,7 +13,7 @@ object SubscriptionEventProducer {
     def processAndSend(events: Chunk[Either[Throwable, SubscriptionEvent]]): Task[Unit]
   }
 
-  final class LiveService(topic: String, producer: Producer, logger: Logger[String]) extends Service {
+  final class LiveService(topic: String, producer: Producer) extends Service {
     private val layer = ZLayer.succeed(producer)
 
     private def sendInternal(events: Chunk[SubscriptionEvent]): Task[Unit] = {
@@ -30,25 +29,19 @@ object SubscriptionEventProducer {
       val validEvents = events.collect { case Right(e) => e }
       val errors = events.size - validEvents.size
       for {
-        _ <- logger.debug(s"sending events: ${validEvents.mkString(",")}")
+        _ <- ZIO.logDebug(s"sending events: ${validEvents.mkString(",")}")
         _ <- sendInternal(validEvents)
-        _ <- logger.warn(s"sending events errors: ${errors}").when(errors > 0)
+        _ <- ZIO.logWarning(s"sending events errors: ${errors}").when(errors > 0)
       } yield ()
     }
 
     override def send(events: Chunk[SubscriptionEvent]): Task[Unit] = {
-      logger.debug(s"sending events: ${events.mkString(",")}") *> sendInternal(events)
+      ZIO.logDebug(s"sending events: ${events.mkString(",")}") *> sendInternal(events)
     }
   }
 
-  def create(topic: String): ZLayer[Has[Producer] with Logging, Nothing, SubscriptionEventProducer] = {
-    val res = for {
-      logger <- ZIO.service[Logger[String]]
-      producer <- ZIO.service[Producer]
-    } yield {
-      new LiveService(topic, producer, logger)
-    }
-    res.toLayer
+  def create(topic: String): ZLayer[Producer, Nothing, SubscriptionEventProducer] = {
+    ZLayer.fromZIO(ZIO.service[Producer].map(new LiveService(topic, _)))
   }
 
   def send(events: Chunk[SubscriptionEvent]): ZIO[SubscriptionEventProducer, Throwable, Unit] = {

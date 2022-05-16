@@ -3,8 +3,7 @@ package com.jc.cdc
 import com.jc.cdc.debezium.DebeziumCdcHandler
 import io.debezium.config.Configuration
 import io.debezium.engine.ChangeEvent
-import zio.blocking.Blocking
-import zio.{Chunk, Has, Task, ZIO, ZManaged}
+import zio.{Chunk, Scope, Task, ZIO}
 
 object CdcHandler {
 
@@ -20,7 +19,7 @@ object CdcHandler {
   }
 
   def create[R](handler: Chunk[ChangeEvent[String, String]] => ZIO[R, Throwable, Unit])
-    : ZManaged[Has[Configuration] with Blocking with R, Throwable, Service] = {
+    : ZIO[Configuration with Scope with R, Throwable, Service] = {
     DebeziumCdcHandler.create[R](handler)
   }
 

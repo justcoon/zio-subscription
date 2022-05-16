@@ -3,7 +3,7 @@ package com.jc.auth.api
 import com.jc.auth.JwtAuthenticator
 import io.grpc.Status
 import scalapb.zio_grpc.RequestContext
-import zio.{Has, ZIO}
+import zio.ZIO
 
 object GrpcJwtAuth {
 
@@ -12,7 +12,7 @@ object GrpcJwtAuth {
   private val AuthHeader: Metadata.Key[String] =
     Metadata.Key.of(JwtAuthenticator.AuthHeader, Metadata.ASCII_STRING_MARSHALLER)
 
-  def authenticated(authenticator: JwtAuthenticator.Service): ZIO[Has[RequestContext], Status, String] = {
+  def authenticated(authenticator: JwtAuthenticator.Service): ZIO[RequestContext, Status, String] = {
     for {
       ctx <- ZIO.service[scalapb.zio_grpc.RequestContext]
       maybeHeader <- ctx.metadata.get(AuthHeader)

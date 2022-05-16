@@ -24,7 +24,6 @@ import com.jc.subscription.module.db.DbConnection
 import com.jc.subscription.module.db.quill.PostgresDbContext
 import com.jc.subscription.module.repo.{SubscriptionEventRepo, SubscriptionRepo}
 import io.getquill.context.zio.ZioJAsyncConnection
-import zio.logging.{Logger, Logging}
 import zio.{ZIO, ZLayer}
 
 import java.time.Instant
@@ -55,8 +54,7 @@ object SubscriptionDomain {
   final class LiveService(
     subscriptionRepo: SubscriptionRepo.Service[DbConnection],
     subscriptionEventRepo: SubscriptionEventRepo.Service[DbConnection],
-    dbConnection: ZioJAsyncConnection,
-    logger: Logger[String])
+    dbConnection: ZioJAsyncConnection)
       extends Service {
     import io.scalaland.chimney.dsl._
 
@@ -75,7 +73,7 @@ object SubscriptionDomain {
     }
 
     override def getSubscription(request: GetSubscriptionReq): ZIO[Any, Throwable, GetSubscriptionRes] = {
-      logger.info(s"getSubscription - id: ${request.id}") *>
+      ZIO.logInfo(s"getSubscription - id: ${request.id}") *>
         ctx.transaction {
           subscriptionRepo
             .find(request.id)
@@ -84,7 +82,7 @@ object SubscriptionDomain {
     }
 
     override def createSubscription(request: CreateSubscriptionReq): ZIO[Any, Throwable, CreateSubscriptionRes] = {
-      logger.info(s"createSubscription - id: ${request.id}") *>
+      ZIO.logInfo(s"createSubscription - id: ${request.id}") *>
         ctx.transaction {
           val value = request.into[SubscriptionRepo.Subscription].withFieldConst(_.createdAt, Instant.now()).transform
 
@@ -114,7 +112,7 @@ object SubscriptionDomain {
 
     override def updateSubscriptionAddress(
       request: UpdateSubscriptionAddressReq): ZIO[Any, Throwable, UpdateSubscriptionAddressRes] = {
-      logger.info(s"updateSubscriptionAddress - id: ${request.id}") *>
+      ZIO.logInfo(s"updateSubscriptionAddress - id: ${request.id}") *>
         ctx.transaction {
           val value = request.address.map(_.transformInto[SubscriptionRepo.Address])
           val at = Instant.now()
@@ -140,7 +138,7 @@ object SubscriptionDomain {
 
     override def updateSubscriptionEmail(
       request: UpdateSubscriptionEmailReq): ZIO[Any, Throwable, UpdateSubscriptionEmailRes] = {
-      logger.info(s"updateSubscriptionEmail - id: ${request.id}") *>
+      ZIO.logInfo(s"updateSubscriptionEmail - id: ${request.id}") *>
         ctx.transaction {
           val at = Instant.now()
           for {
@@ -164,7 +162,7 @@ object SubscriptionDomain {
     }
 
     override def removeSubscription(request: RemoveSubscriptionReq): ZIO[Any, Throwable, RemoveSubscriptionRes] = {
-      logger.info(s"removeSubscription - id: ${request.id}") *>
+      ZIO.logInfo(s"removeSubscription - id: ${request.id}") *>
         ctx.transaction {
           for {
             deleted <- subscriptionRepo.delete(request.id)
@@ -187,7 +185,7 @@ object SubscriptionDomain {
     }
 
     override def getSubscriptions(request: GetSubscriptionsReq): ZIO[Any, Throwable, GetSubscriptionsRes] = {
-      logger.info("getSubscriptions") *>
+      ZIO.logInfo("getSubscriptions") *>
         ctx.transaction {
           subscriptionRepo
             .findAll()
@@ -196,19 +194,15 @@ object SubscriptionDomain {
     }
   }
 
-  val live: ZLayer[
-    SubscriptionRepo with SubscriptionEventRepo with DbConnection with Logging,
-    Nothing,
-    SubscriptionDomain] = {
+  val live: ZLayer[SubscriptionRepo with SubscriptionEventRepo with DbConnection, Nothing, SubscriptionDomain] = {
     val res = for {
-      logger <- ZIO.service[Logger[String]]
       dbConnection <- ZIO.service[ZioJAsyncConnection]
       subscriptionRepo <- ZIO.service[SubscriptionRepo.Service[DbConnection]]
       subscriptionEventRepo <- ZIO.service[SubscriptionEventRepo.Service[DbConnection]]
     } yield {
-      new LiveService(subscriptionRepo, subscriptionEventRepo, dbConnection, logger)
+      new LiveService(subscriptionRepo, subscriptionEventRepo, dbConnection)
     }
-    res.toLayer
+    ZLayer.fromZIO(res)
   }
 
   def createSubscription(request: com.jc.subscription.domain.proto.CreateSubscriptionReq)
