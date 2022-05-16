@@ -27,7 +27,7 @@ object HttpApiServer {
   private def httpApp(): HttpApp[RIO[ServerEnv, *]] =
     HttpServerLogger.httpApp[RIO[ServerEnv, *]](true, true)(httpRoutes().orNotFound)
 
-  def create(config: HttpApiConfig): ZLayer[ServerEnv, Throwable, Server] = {
+  def make(config: HttpApiConfig): ZLayer[ServerEnv, Throwable, Server] = {
     ZLayer.scoped(
       BlazeServerBuilder[RIO[ServerEnv, *]]
         .bindHttp(config.port, config.address)
@@ -37,7 +37,7 @@ object HttpApiServer {
     )
   }
 
-  val live: ZLayer[HttpApiConfig with ServerEnv, Throwable, Server] = {
+  val layer: ZLayer[HttpApiConfig with ServerEnv, Throwable, Server] = {
     val res = for {
       config <- ZIO.service[HttpApiConfig]
       server <- BlazeServerBuilder[RIO[ServerEnv, *]]

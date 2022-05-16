@@ -48,8 +48,8 @@ object Main extends ZIOAppDefault {
         SubscriptionGrpcApiHandler.layer,
         KafkaProducer.make(appConfig.kafka),
         LiveSubscriptionEventProducer.create(appConfig.kafka.subscriptionTopic),
-        HttpApiServer.create(appConfig.restApi),
-        GrpcApiServer.create(appConfig.grpcApi),
+        HttpApiServer.make(appConfig.restApi),
+        GrpcApiServer.make(appConfig.grpcApi),
         PostgresCdc.make(appConfig.db, SubscriptionEventProducer.processAndSend)
       )
     }
@@ -71,8 +71,8 @@ object Main extends ZIOAppDefault {
         LogbackLoggingSystem.make(),
         LoggingSystemGrpcApiHandler.layer,
         SubscriptionGrpcApiHandler.layer,
-        HttpApiServer.create(appConfig.restApi),
-        GrpcApiServer.create(appConfig.grpcApi)
+        HttpApiServer.make(appConfig.restApi),
+        GrpcApiServer.make(appConfig.grpcApi)
       )
     }
   }
@@ -85,7 +85,7 @@ object Main extends ZIOAppDefault {
         DbConnection.make(appConfig.db.connection),
         KafkaProducer.make(appConfig.kafka),
         LiveSubscriptionEventProducer.create(appConfig.kafka.subscriptionTopic),
-        HttpApiServer.create(appConfig.restApi),
+        HttpApiServer.make(appConfig.restApi),
         PostgresCdc.make(appConfig.db, SubscriptionEventProducer.processAndSend)
       )
     }
