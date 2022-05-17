@@ -53,27 +53,27 @@ object SubscriptionDomainService {
 
   def createSubscription(request: com.jc.subscription.domain.proto.CreateSubscriptionReq)
     : zio.ZIO[SubscriptionDomainService, Throwable, com.jc.subscription.domain.proto.CreateSubscriptionRes] =
-    ZIO.service[SubscriptionDomainService].flatMap(_.createSubscription(request))
+    ZIO.serviceWithZIO[SubscriptionDomainService](_.createSubscription(request))
 
   def updateSubscriptionAddress(request: com.jc.subscription.domain.proto.UpdateSubscriptionAddressReq)
     : zio.ZIO[SubscriptionDomainService, Throwable, com.jc.subscription.domain.proto.UpdateSubscriptionAddressRes] =
-    ZIO.service[SubscriptionDomainService].flatMap(_.updateSubscriptionAddress(request))
+    ZIO.serviceWithZIO[SubscriptionDomainService](_.updateSubscriptionAddress(request))
 
   def updateSubscriptionEmail(request: com.jc.subscription.domain.proto.UpdateSubscriptionEmailReq)
     : zio.ZIO[SubscriptionDomainService, Throwable, com.jc.subscription.domain.proto.UpdateSubscriptionEmailRes] =
-    ZIO.service[SubscriptionDomainService].flatMap(_.updateSubscriptionEmail(request))
+    ZIO.serviceWithZIO[SubscriptionDomainService](_.updateSubscriptionEmail(request))
 
   def removeSubscription(request: com.jc.subscription.domain.proto.RemoveSubscriptionReq)
     : zio.ZIO[SubscriptionDomainService, Throwable, com.jc.subscription.domain.proto.RemoveSubscriptionRes] =
-    ZIO.service[SubscriptionDomainService].flatMap(_.removeSubscription(request))
+    ZIO.serviceWithZIO[SubscriptionDomainService](_.removeSubscription(request))
 
   def getSubscription(request: com.jc.subscription.domain.proto.GetSubscriptionReq)
     : zio.ZIO[SubscriptionDomainService, Throwable, com.jc.subscription.domain.proto.GetSubscriptionRes] =
-    ZIO.service[SubscriptionDomainService].flatMap(_.getSubscription(request))
+    ZIO.serviceWithZIO[SubscriptionDomainService](_.getSubscription(request))
 
   def getSubscriptions(request: com.jc.subscription.domain.proto.GetSubscriptionsReq)
     : zio.ZIO[SubscriptionDomainService, Throwable, com.jc.subscription.domain.proto.GetSubscriptionsRes] =
-    ZIO.service[SubscriptionDomainService].flatMap(_.getSubscriptions(request))
+    ZIO.serviceWithZIO[SubscriptionDomainService](_.getSubscriptions(request))
 }
 
 final class LiveSubscriptionDomainService(

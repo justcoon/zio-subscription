@@ -51,7 +51,7 @@ object PostgresCdc {
   def make[R](handler: Chunk[Either[Throwable, SubscriptionEventRepo.SubscriptionEvent]] => ZIO[R, Throwable, Unit])
     : ZLayer[DbCdcConfig with R, Throwable, CdcHandler] = {
     val typeHandler = CdcHandler.postgresTypeHandler(handler)(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder)
-    val configLayer = ZLayer.fromZIO(ZIO.service[DbCdcConfig].map(getConfig))
+    val configLayer = ZLayer.service[DbCdcConfig].project(getConfig)
     val cdc = CdcHandler.make(typeHandler).provideSomeLayer[DbCdcConfig with R with Scope](configLayer)
     ZLayer.scoped[DbCdcConfig with R](cdc)
   }

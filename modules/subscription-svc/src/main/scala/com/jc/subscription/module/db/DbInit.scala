@@ -6,8 +6,6 @@ import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.MigrateResult
 import zio.{Task, ZIO}
 
-import scala.util.Try
-
 object DbInit {
 
   def run(config: JAsyncContextConfig[PostgreSQLConnection]): Task[MigrateResult] = {

@@ -49,11 +49,11 @@ object LiveSubscriptionEventProducer {
 object SubscriptionEventProducer {
 
   def send(events: Chunk[SubscriptionEvent]): ZIO[SubscriptionEventProducer, Throwable, Unit] = {
-    ZIO.service[SubscriptionEventProducer].flatMap(_.send(events))
+    ZIO.serviceWithZIO[SubscriptionEventProducer](_.send(events))
   }
 
   def processAndSend(
     events: Chunk[Either[Throwable, SubscriptionEvent]]): ZIO[SubscriptionEventProducer, Throwable, Unit] = {
-    ZIO.service[SubscriptionEventProducer].flatMap(_.processAndSend(events))
+    ZIO.serviceWithZIO[SubscriptionEventProducer](_.processAndSend(events))
   }
 }
