@@ -3,24 +3,24 @@ Scope.Global / scalaVersion := "2.13.8"
 
 lazy val Versions = new {
   val kindProjector = "0.13.2"
-  val http4s = "0.23.11"
-  val zio = "2.0.0-RC6"
-  val zioInteropCats = "3.3.0-RC7"
-  val zioLogging = "2.0.0-RC10"
+  val http4s = "0.23.12"
+  val zio = "2.0.0"
+  val zioInteropCats = "3.3.0"
+  val zioLogging = "2.0.0"
   val zioMetrics = "1.0.14"
-  val zioKafka = "2.0.0-M3"
-  val zioConfig = "3.0.0-RC9"
-  val zioPrelude = "1.0.0-RC14"
+  val zioKafka = "2.0.0"
+  val zioConfig = "3.0.1"
+  val zioPrelude = "1.0.0-RC15"
   val jackson = "2.13.3"
   val circe = "0.14.1"
   val randomDataGenerator = "2.9"
   val logback = "1.2.11"
-  val grpc = "1.46.0"
+  val grpc = "1.47.0"
   val chimney = "0.6.1"
-  val pauldijouJwt = "5.0.0"
-  val quill = "3.17.0-RC4"
-  val debezium = "1.9.2.Final"
-  val flyway = "8.5.11"
+  val scalaJwt = "9.0.5"
+  val quill = "4.0.0"
+  val debezium = "1.9.4.Final"
+  val flyway = "8.5.13"
 }
 
 lazy val library =
@@ -40,7 +40,8 @@ lazy val library =
     val circeGeneric = "io.circe" %% "circe-generic"                                  % Versions.circe
     val circeGenericExtras = "io.circe" %% "circe-generic-extras"                     % Versions.circe
     val circeYaml = "io.circe" %% "circe-yaml"                                        % Versions.circe
-    val pauldijouJwtCirce = "com.pauldijou" %% "jwt-circe"                            % Versions.pauldijouJwt
+
+    val jwtCirce = "com.github.jwt-scala" %% "jwt-circe" % Versions.scalaJwt
 
     val chimney = "io.scalaland" %% "chimney" % Versions.chimney
 
@@ -112,7 +113,7 @@ lazy val `core` =
         library.circeGeneric,
         library.circeGenericExtras,
         library.circeYaml,
-        library.pauldijouJwtCirce,
+        library.jwtCirce,
         library.zioConfigRefined,
         library.zioConfigMagnolia,
         library.zioConfigTypesafe,

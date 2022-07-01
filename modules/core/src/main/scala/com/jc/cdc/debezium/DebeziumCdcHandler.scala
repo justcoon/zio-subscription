@@ -4,7 +4,7 @@ import io.circe
 import io.debezium.config.Configuration
 import io.debezium.engine.format.Json
 import io.debezium.engine.{ChangeEvent, DebeziumEngine}
-import zio.{Chunk, Scope, Task, ZIO}
+import zio.{Chunk, Scope, Task, Unsafe, ZIO}
 import com.jc.cdc.CdcHandler
 
 import scala.util.{Failure, Success, Try}
@@ -13,7 +13,7 @@ final private class DebeziumService(engine: DebeziumEngine[ChangeEvent[String, S
 
   override def start: Task[Unit] = {
     ZIO.blockingExecutor.map { executor =>
-      executor.unsafeSubmitOrThrow(engine)
+      executor.asJava.execute(engine)
     }
   }
 
@@ -64,7 +64,10 @@ object DebeziumCdcHandler {
       c <- ZIO.service[Configuration]
       engine <- ZIO.fromTry {
         val h: Chunk[ChangeEvent[String, String]] => Try[Unit] =
-          events => r.unsafeRunSync(handler(events)).toEither.toTry
+          events =>
+            Unsafe.unsafeCompat { implicit u =>
+              r.unsafe.run(handler(events)).toTry
+            }
 
         createEngine(h, c).map(engine => new DebeziumService(engine))
       }
