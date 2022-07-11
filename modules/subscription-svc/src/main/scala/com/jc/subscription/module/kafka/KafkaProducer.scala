@@ -1,24 +1,26 @@
 package com.jc.subscription.module.kafka
 
 import com.jc.subscription.model.config.KafkaConfig
-import zio.{Has, ZLayer, ZManaged}
-import zio.blocking.Blocking
+import zio.{ZIO, ZLayer}
 import zio.kafka.producer.{Producer, ProducerSettings}
 
 object KafkaProducer {
 
-  def create(config: KafkaConfig): ZLayer[Blocking, Throwable, Has[Producer]] = {
+  def make(config: KafkaConfig): ZLayer[Any, Throwable, Producer] = {
     import eu.timepit.refined.auto._
-    Producer.make(ProducerSettings(config.addresses)).toLayer
+    ZLayer.scoped {
+      Producer.make(ProducerSettings(config.addresses))
+    }
   }
 
-  val live: ZLayer[Has[KafkaConfig] with Blocking, Throwable, Has[Producer]] = {
+  val layer: ZLayer[KafkaConfig, Throwable, Producer] = {
     import eu.timepit.refined.auto._
-    val res = for {
-      config <- ZManaged.service[KafkaConfig]
-      producer <- Producer.make(ProducerSettings(config.addresses))
-    } yield producer
-    res.toLayer
+    ZLayer.scoped {
+      for {
+        config <- ZIO.service[KafkaConfig]
+        producer <- Producer.make(ProducerSettings(config.addresses))
+      } yield producer
+    }
   }
 
 }

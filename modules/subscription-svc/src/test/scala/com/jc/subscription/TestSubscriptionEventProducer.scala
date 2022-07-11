@@ -2,34 +2,25 @@ package com.jc.subscription
 
 import com.jc.subscription.module.event.SubscriptionEventProducer
 import com.jc.subscription.module.repo.SubscriptionEventRepo
-import zio.{Chunk, Has, Queue, Task, ZIO, ZLayer}
-import zio.logging.{Logger, Logging}
+import zio.{Chunk, Queue, Task, ZIO, ZLayer}
+
+final class TestSubscriptionEventProducer(queue: Queue[SubscriptionEventRepo.SubscriptionEvent])
+    extends SubscriptionEventProducer {
+
+  override def send(events: Chunk[SubscriptionEventRepo.SubscriptionEvent]): Task[Unit] = {
+    ZIO.logDebug(s"sending events: ${events.mkString(",")}") *>
+      queue.offerAll(events).unit
+  }
+
+  override def processAndSend(events: Chunk[Either[Throwable, SubscriptionEventRepo.SubscriptionEvent]]): Task[Unit] = {
+    val validEvents = events.collect { case Right(e) => e }
+    send(validEvents)
+  }
+}
 
 object TestSubscriptionEventProducer {
 
-  private class TestService(queue: Queue[SubscriptionEventRepo.SubscriptionEvent], logger: Logger[String])
-      extends SubscriptionEventProducer.Service {
-
-    override def send(events: Chunk[SubscriptionEventRepo.SubscriptionEvent]): Task[Unit] = {
-      logger.debug(s"sending events: ${events.mkString(",")}") *>
-        queue.offerAll(events).unit
-    }
-
-    override def processAndSend(
-      events: Chunk[Either[Throwable, SubscriptionEventRepo.SubscriptionEvent]]): Task[Unit] = {
-      val validEvents = events.collect { case Right(e) => e }
-
-      send(validEvents)
-    }
-  }
-
-  val live
-    : ZLayer[Has[Queue[SubscriptionEventRepo.SubscriptionEvent]] with Logging, Throwable, SubscriptionEventProducer] = {
-    val res = for {
-      logger <- ZIO.service[Logger[String]]
-      queue <- ZIO.service[Queue[SubscriptionEventRepo.SubscriptionEvent]]
-    } yield new TestService(queue, logger)
-
-    res.toLayer
-  }
+  val layer: ZLayer[Queue[SubscriptionEventRepo.SubscriptionEvent], Throwable, SubscriptionEventProducer] =
+    ZLayer.fromZIO(
+      ZIO.service[Queue[SubscriptionEventRepo.SubscriptionEvent]].map(q => new TestSubscriptionEventProducer(q)))
 }

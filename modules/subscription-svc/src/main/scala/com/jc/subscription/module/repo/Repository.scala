@@ -83,40 +83,40 @@ class InMemoryRepository[R, ID, E <: Repository.Entity[ID]](private val store: C
     extends Repository[R, ID, E] {
 
   override def insert(value: E): ZIO[R, Throwable, Boolean] = {
-    UIO {
+    ZIO.succeed {
       val res = Option(store.put(value.id, value))
       res.isDefined
     }
   }
 
   override def update(value: E): ZIO[R, Throwable, Boolean] = {
-    UIO {
+    ZIO.succeed {
       val res = Option(store.put(value.id, value))
       res.isDefined
     }
   }
 
   override def delete(id: ID): ZIO[R, Throwable, Boolean] = {
-    UIO {
+    ZIO.succeed {
       Option(store.remove(id)).isDefined
     }
   }
 
   override def find(id: ID): ZIO[R, Throwable, Option[E]] = {
-    UIO {
+    ZIO.succeed {
       Option(store.get(id))
     }
   }
 
   override def findAll(): ZIO[R, Throwable, Seq[E]] = {
     import scala.jdk.CollectionConverters._
-    UIO {
+    ZIO.succeed {
       store.values().asScala.toSeq
     }
   }
 
   def find(predicate: E => Boolean): ZIO[R, Throwable, Seq[E]] = {
-    UIO {
+    ZIO.succeed {
       val found = scala.collection.mutable.ListBuffer[E]()
       store.forEach {
         makeBiConsumer { (_, e) =>
@@ -144,15 +144,15 @@ object InMemoryRepository {
 
 class NoOpSearchRepository[R, E <: Repository.Entity[_]]() extends SearchRepository[R, E] {
 
-  override def suggest(query: String): ZIO[R, Throwable, SearchRepository.SuggestResponse] = UIO(
-    SearchRepository.SuggestResponse(Nil))
+  override def suggest(query: String): ZIO[R, Throwable, SearchRepository.SuggestResponse] =
+    ZIO.succeed(SearchRepository.SuggestResponse(Nil))
 
   override def search(
     query: Option[String],
     page: Int,
     pageSize: Int,
     sorts: Iterable[SearchRepository.FieldSort]): ZIO[R, Throwable, SearchRepository.PaginatedSequence[E]] =
-    UIO(SearchRepository.PaginatedSequence[E](Nil, page, pageSize, 0))
+    ZIO.succeed(SearchRepository.PaginatedSequence[E](Nil, page, pageSize, 0))
 }
 
 object NoOpSearchRepository {

@@ -4,8 +4,7 @@ import com.jc.cdc.CdcHandler
 import com.jc.subscription.model.config.DbCdcConfig
 import com.jc.subscription.module.repo.SubscriptionEventRepo
 import io.debezium.config.Configuration
-import zio.{Chunk, Has, ZIO, ZLayer}
-import zio.blocking.Blocking
+import zio.{Chunk, Scope, ZIO, ZLayer}
 
 object PostgresCdc {
 
@@ -39,21 +38,21 @@ object PostgresCdc {
       .build
   }
 
-  def create[R](
+  def make[R](
     dbCdcConfig: DbCdcConfig,
     handler: Chunk[Either[Throwable, SubscriptionEventRepo.SubscriptionEvent]] => ZIO[R, Throwable, Unit])
-    : ZLayer[Blocking with R, Throwable, CdcHandler] = {
+    : ZLayer[R, Throwable, CdcHandler] = {
     val typeHandler = CdcHandler.postgresTypeHandler(handler)(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder)
     val configLayer = ZLayer.succeed(getConfig(dbCdcConfig))
-    val cdc = CdcHandler.create(typeHandler).provideSomeLayer[Blocking with R](configLayer)
-    cdc.toLayer
+    val cdc = CdcHandler.make(typeHandler).provideSomeLayer[R with Scope](configLayer)
+    ZLayer.scoped[R](cdc)
   }
 
-  def create[R](handler: Chunk[Either[Throwable, SubscriptionEventRepo.SubscriptionEvent]] => ZIO[R, Throwable, Unit])
-    : ZLayer[Has[DbCdcConfig] with Blocking with R, Throwable, CdcHandler] = {
+  def make[R](handler: Chunk[Either[Throwable, SubscriptionEventRepo.SubscriptionEvent]] => ZIO[R, Throwable, Unit])
+    : ZLayer[DbCdcConfig with R, Throwable, CdcHandler] = {
     val typeHandler = CdcHandler.postgresTypeHandler(handler)(SubscriptionEventRepo.SubscriptionEvent.cdcDecoder)
-    val configLayer = ZIO.service[DbCdcConfig].map(getConfig).toLayer
-    val cdc = CdcHandler.create(typeHandler).provideSomeLayer[Has[DbCdcConfig] with Blocking with R](configLayer)
-    cdc.toLayer
+    val configLayer = ZLayer.service[DbCdcConfig].project(getConfig)
+    val cdc = CdcHandler.make(typeHandler).provideSomeLayer[DbCdcConfig with R with Scope](configLayer)
+    ZLayer.scoped[DbCdcConfig with R](cdc)
   }
 }

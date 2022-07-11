@@ -4,26 +4,25 @@ import io.circe
 import io.debezium.config.Configuration
 import io.debezium.engine.format.Json
 import io.debezium.engine.{ChangeEvent, DebeziumEngine}
-import zio.blocking.Blocking
-import zio.{Chunk, Has, Task, ZIO, ZManaged}
+import zio.{Chunk, Scope, Task, Unsafe, ZIO}
 import com.jc.cdc.CdcHandler
 
 import scala.util.{Failure, Success, Try}
 
-object DebeziumCdcHandler {
+final private class DebeziumService(engine: DebeziumEngine[ChangeEvent[String, String]]) extends CdcHandler {
 
-  final private class DebeziumService(engine: DebeziumEngine[ChangeEvent[String, String]], blocking: Blocking.Service)
-      extends CdcHandler.Service {
-
-    override def start: Task[Unit] = {
-      Task.effect(blocking.blockingExecutor.submitOrThrow(engine))
+  override def start: Task[Unit] = {
+    ZIO.blockingExecutor.map { executor =>
+      executor.asJava.execute(engine)
     }
-
-    override def shutdown: Task[Unit] = {
-      Task.effect(engine.close()).unit
-    }
-
   }
+
+  override def shutdown: Task[Unit] = {
+    ZIO.attempt(engine.close()).unit
+  }
+}
+
+object DebeziumCdcHandler {
 
   private def createChangeConsumer(handler: Chunk[ChangeEvent[String, String]] => Try[Unit]) = {
     new io.debezium.engine.DebeziumEngine.ChangeConsumer[ChangeEvent[String, String]] {
@@ -57,21 +56,24 @@ object DebeziumCdcHandler {
     }
   }
 
-  def create[R](
+  def make[R](
     handler: Chunk[ChangeEvent[String, String]] => ZIO[R, Throwable, Unit]
-  ): ZManaged[Has[Configuration] with Blocking with R, Throwable, CdcHandler.Service] = {
+  ): ZIO[Configuration with Scope with R, Throwable, CdcHandler] = {
     val engine = for {
       r <- ZIO.runtime[R]
       c <- ZIO.service[Configuration]
-      b <- ZIO.service[Blocking.Service]
       engine <- ZIO.fromTry {
         val h: Chunk[ChangeEvent[String, String]] => Try[Unit] =
-          events => r.unsafeRunSync(handler(events)).toEither.toTry
+          events =>
+            Unsafe.unsafeCompat { implicit u =>
+              r.unsafe.run(handler(events)).toTry
+            }
 
-        createEngine(h, c).map(engine => new DebeziumService(engine, b))
+        createEngine(h, c).map(engine => new DebeziumService(engine))
       }
     } yield engine
-    engine.flatMap(s => s.start.as(s)).toManaged(s => s.shutdown.ignore)
+
+    ZIO.acquireRelease(engine.flatMap(s => s.start.as(s)))(s => s.shutdown.ignore)
   }
 
   // https://debezium.io/documentation/reference/1.8/connectors/postgresql.html#postgresql-update-events

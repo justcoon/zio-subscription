@@ -6,65 +6,58 @@ import com.jc.subscription.domain.SubscriptionEntity._
 import com.jc.subscription.model.config.{AppCdcConfig, AppConfig}
 import com.jc.subscription.module.db.{DbConnection, DbInit}
 import com.jc.subscription.module.db.cdc.PostgresCdc
-import com.jc.subscription.module.domain.SubscriptionDomain
+import com.jc.subscription.module.domain.{LiveSubscriptionDomainService, SubscriptionDomainService}
 import com.jc.subscription.module.event.SubscriptionEventProducer
-import com.jc.subscription.module.repo.{SubscriptionEventRepo, SubscriptionRepo}
-import zio.blocking.Blocking
-import zio.clock.Clock
-import zio.console.Console
-import zio.duration.durationInt
-import zio.logging.{Logger, Logging}
-import zio.logging.slf4j.Slf4jLogger
-import zio.magic._
+import com.jc.subscription.module.repo.{
+  LiveSubscriptionEventRepo,
+  LiveSubscriptionRepo,
+  SubscriptionEventRepo,
+  SubscriptionRepo
+}
+import zio._
 import zio.test.Assertion._
 import zio.test.TestAspect._
 import zio.test._
-import zio.{Has, Queue, ZIO, ZLayer}
+import zio.{Queue, ZIO, ZLayer}
 import zio.config._
 import zio.config.syntax._
 import zio.config.typesafe._
+import zio.logging.backend.SLF4J
 
 import java.util.UUID
 
-object SubscriptionCdcSpec extends DefaultRunnableSpec {
+object SubscriptionCdcSpec extends ZIOSpecDefault {
 
-  type AppEnvironment = Clock
-    with Console with Blocking with Logging with DbConnection with SubscriptionRepo with SubscriptionEventRepo
-    with SubscriptionDomain with SubscriptionEventProducer with CdcHandler
-    with Has[Queue[SubscriptionEventRepo.SubscriptionEvent]]
+  type AppEnvironment = DbConnection
+    with SubscriptionRepo[DbConnection] with SubscriptionEventRepo[DbConnection] with SubscriptionDomainService
+    with SubscriptionEventProducer with CdcHandler with Queue[SubscriptionEventRepo.SubscriptionEvent]
 
-  private val testConfig = AppConfig.readConfig[AppCdcConfig](ConfigSource.fromResourcePath.memoize).toLayer
+  private val testConfig = ZLayer.fromZIO(AppConfig.readConfig[AppCdcConfig](ConfigSource.fromResourcePath.memoize))
 
-  private val testQueue: ZLayer[Any, Nothing, Has[Queue[SubscriptionEventRepo.SubscriptionEvent]]] =
-    Queue.unbounded[SubscriptionEventRepo.SubscriptionEvent].toLayer
+  private val testQueue: ZLayer[Any, Nothing, Queue[SubscriptionEventRepo.SubscriptionEvent]] =
+    ZLayer.fromZIO(Queue.unbounded[SubscriptionEventRepo.SubscriptionEvent])
 
-  private val layer: ZLayer[Any, TestFailure[Throwable], AppEnvironment] = {
-    ZLayer
-      .fromMagic[AppEnvironment](
-        Clock.live,
-        Console.live,
-        Blocking.live,
-        Slf4jLogger.make((_, message) => message),
-        testConfig.narrow(_.db),
-        DbConnection.live,
-        SubscriptionRepo.live,
-        SubscriptionEventRepo.live,
-        SubscriptionDomain.live,
-        testQueue,
-        TestSubscriptionEventProducer.live,
-        testConfig.narrow(_.db.connection),
-        PostgresCdc.create(SubscriptionEventProducer.processAndSend)
-      )
-      .mapError(TestFailure.fail)
-  }
+  private val layer: ZLayer[Any, Throwable, AppEnvironment] =
+    ZLayer.make[AppEnvironment](
+      testConfig.narrow(_.db),
+      DbConnection.live,
+      LiveSubscriptionRepo.layer,
+      LiveSubscriptionEventRepo.layer,
+      LiveSubscriptionDomainService.layer,
+      testQueue,
+      TestSubscriptionEventProducer.layer,
+      testConfig.narrow(_.db.connection),
+      PostgresCdc.make(SubscriptionEventProducer.processAndSend)
+    ) ++ SLF4J.slf4j(zio.LogLevel.Debug)
 
   override def spec = suite("SubscriptionCdcSpec")(
-    testM("create and get") {
+    test("create and get") {
       val id = UUID.randomUUID().toString.asSubscriptionId
       for {
         queue <- ZIO.service[Queue[SubscriptionEventRepo.SubscriptionEvent]]
-        cr <- SubscriptionDomain.createSubscription(CreateSubscriptionReq(id, "user1".asUserId, "user1@email.com"))
-        gr <- SubscriptionDomain.getSubscription(GetSubscriptionReq(id))
+        cr <- SubscriptionDomainService.createSubscription(
+          CreateSubscriptionReq(id, "user1".asUserId, "user1@email.com"))
+        gr <- SubscriptionDomainService.getSubscription(GetSubscriptionReq(id))
         _ <- ZIO.sleep(2.seconds)
         events <- queue.takeAll
       } yield {
@@ -72,5 +65,5 @@ object SubscriptionCdcSpec extends DefaultRunnableSpec {
           events.exists(_.entityId == id))(isTrue)
       }
     }
-  ).provideLayer(layer) @@ beforeAll(DbInit.run.provideLayer(testConfig.narrow(_.db.connection)))
+  ).provideLayer(layer) @@ beforeAll(DbInit.run.provideLayer(testConfig.narrow(_.db.connection))) @@ withLiveClock
 }

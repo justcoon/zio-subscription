@@ -3,25 +3,24 @@ Scope.Global / scalaVersion := "2.13.8"
 
 lazy val Versions = new {
   val kindProjector = "0.13.2"
-  val http4s = "0.23.11"
-  val zio = "1.0.14"
-  val zioInteropCats = "3.2.9.1"
-  val zioLogging = "0.5.14"
-  val zioMetrics = "1.0.14"
-  val zioKafka = "0.17.5"
-  val zioMagic = "0.3.12"
-  val zioConfig = "2.0.4"
-  val zioPrelude = "1.0.0-RC8"
+  val http4s = "0.23.12"
+  val zio = "2.0.0"
+  val zioInteropCats = "3.3.0"
+  val zioLogging = "2.0.0"
+  val zioMetrics = "2.0.0"
+  val zioKafka = "2.0.0"
+  val zioConfig = "3.0.1"
+  val zioPrelude = "1.0.0-RC15"
   val jackson = "2.13.3"
-  val circe = "0.14.1"
+  val circe = "0.14.2"
   val randomDataGenerator = "2.9"
   val logback = "1.2.11"
-  val grpc = "1.46.0"
+  val grpc = "1.47.0"
   val chimney = "0.6.1"
-  val pauldijouJwt = "5.0.0"
-  val quill = "3.16.3"
-  val debezium = "1.9.2.Final"
-  val flyway = "8.5.11"
+  val scalaJwt = "9.0.5"
+  val quill = "4.0.0"
+  val debezium = "1.9.5.Final"
+  val flyway = "8.5.13"
 }
 
 lazy val library =
@@ -32,7 +31,6 @@ lazy val library =
     val zioInteropCats = "dev.zio" %% "zio-interop-cats"                              % Versions.zioInteropCats
     val zioLoggingSlf4j = "dev.zio" %% "zio-logging-slf4j"                            % Versions.zioLogging
     val zioMetricsPrometheus = "dev.zio" %% "zio-metrics-prometheus"                  % Versions.zioMetrics
-    val zioMagic = "io.github.kitlangton" %% "zio-magic"                              % Versions.zioMagic
     val zioKafka = "dev.zio" %% "zio-kafka"                                           % Versions.zioKafka
     val jacksonModuleScala = "com.fasterxml.jackson.module" %% "jackson-module-scala" % Versions.jackson
     val http4sCore = "org.http4s" %% "http4s-core"                                    % Versions.http4s
@@ -41,8 +39,8 @@ lazy val library =
     val http4sCirce = "org.http4s" %% "http4s-circe"                                  % Versions.http4s
     val circeGeneric = "io.circe" %% "circe-generic"                                  % Versions.circe
     val circeGenericExtras = "io.circe" %% "circe-generic-extras"                     % Versions.circe
-    val circeYaml = "io.circe" %% "circe-yaml"                                        % Versions.circe
-    val pauldijouJwtCirce = "com.pauldijou" %% "jwt-circe"                            % Versions.pauldijouJwt
+
+    val jwtCirce = "com.github.jwt-scala" %% "jwt-circe" % Versions.scalaJwt
 
     val chimney = "io.scalaland" %% "chimney" % Versions.chimney
 
@@ -113,8 +111,7 @@ lazy val `core` =
         library.http4sDsl,
         library.circeGeneric,
         library.circeGenericExtras,
-        library.circeYaml,
-        library.pauldijouJwtCirce,
+        library.jwtCirce,
         library.zioConfigRefined,
         library.zioConfigMagnolia,
         library.zioConfigTypesafe,
@@ -172,8 +169,6 @@ lazy val `subscription-svc` =
         library.zioStreams,
         library.zioInteropCats,
         library.zioLoggingSlf4j,
-        library.zioMetricsPrometheus,
-        library.zioMagic,
         library.zioPrelude,
         library.jacksonModuleScala,
         library.http4sCore,
