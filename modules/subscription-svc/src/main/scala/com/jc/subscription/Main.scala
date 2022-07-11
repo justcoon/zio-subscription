@@ -24,6 +24,7 @@ import scalapb.zio_grpc.{Server => GrpcServer}
 import org.http4s.server.{Server => HttpServer}
 import eu.timepit.refined.auto._
 import zio.ZIOAppDefault
+import zio.logging.LogFormat
 import zio.logging.backend.SLF4J
 
 object Main extends ZIOAppDefault {
@@ -34,6 +35,15 @@ object Main extends ZIOAppDefault {
     with JwtAuthenticator with SubscriptionRepo[DbConnection] with SubscriptionEventRepo[DbConnection]
     with SubscriptionDomainService with SubscriptionEventProducer with LoggingSystem with LoggingSystemGrpcApiHandler
     with SubscriptionGrpcApiHandler with GrpcServer with HttpServer with CdcHandler
+
+  private val logger = Runtime.removeDefaultLoggers >>> SLF4J.slf4j(
+    zio.LogLevel.Debug,
+    LogFormat.line |-| LogFormat.cause,
+    _ match {
+      case Trace(location, _, _) => location
+      case _ => "zio-subscription-logger"
+    }
+  )
 
   private def createAppConfigAndLayer(config: ConfigSource): Task[(AppAllConfig, TaskLayer[AppEnvironment])] = {
     AppConfig.readConfig[AppAllConfig](config).map { appConfig =>
@@ -114,6 +124,6 @@ object Main extends ZIOAppDefault {
         _ <- ZIO.never
       } yield ExitCode.success
 
-    run.provide(layer ++ SLF4J.slf4j(zio.LogLevel.Debug))
-  }
+    run.provide(layer)
+  }.provide(logger)
 }
