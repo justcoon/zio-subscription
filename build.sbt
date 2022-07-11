@@ -7,19 +7,19 @@ lazy val Versions = new {
   val zio = "2.0.0"
   val zioInteropCats = "3.3.0"
   val zioLogging = "2.0.0"
-  val zioMetrics = "1.0.14"
+  val zioMetrics = "2.0.0"
   val zioKafka = "2.0.0"
   val zioConfig = "3.0.1"
   val zioPrelude = "1.0.0-RC15"
   val jackson = "2.13.3"
-  val circe = "0.14.1"
+  val circe = "0.14.2"
   val randomDataGenerator = "2.9"
   val logback = "1.2.11"
   val grpc = "1.47.0"
   val chimney = "0.6.1"
   val scalaJwt = "9.0.5"
   val quill = "4.0.0"
-  val debezium = "1.9.4.Final"
+  val debezium = "1.9.5.Final"
   val flyway = "8.5.13"
 }
 
@@ -39,7 +39,6 @@ lazy val library =
     val http4sCirce = "org.http4s" %% "http4s-circe"                                  % Versions.http4s
     val circeGeneric = "io.circe" %% "circe-generic"                                  % Versions.circe
     val circeGenericExtras = "io.circe" %% "circe-generic-extras"                     % Versions.circe
-    val circeYaml = "io.circe" %% "circe-yaml"                                        % Versions.circe
 
     val jwtCirce = "com.github.jwt-scala" %% "jwt-circe" % Versions.scalaJwt
 
@@ -112,7 +111,6 @@ lazy val `core` =
         library.http4sDsl,
         library.circeGeneric,
         library.circeGenericExtras,
-        library.circeYaml,
         library.jwtCirce,
         library.zioConfigRefined,
         library.zioConfigMagnolia,
