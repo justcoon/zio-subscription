@@ -7,8 +7,8 @@ import zio.ZLayer
 object DbConnection {
 
   def make(config: JAsyncContextConfig[PostgreSQLConnection]): ZLayer[Any, Throwable, DbConnection] =
-    ZLayer.succeed(config) >>> live
+    ZLayer.succeed(config) >>> layer
 
-  val live: ZLayer[JAsyncContextConfig[PostgreSQLConnection], Throwable, DbConnection] =
+  val layer: ZLayer[JAsyncContextConfig[PostgreSQLConnection], Throwable, DbConnection] =
     ZioJAsyncConnection.live[PostgreSQLConnection]
 }

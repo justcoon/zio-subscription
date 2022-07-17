@@ -11,7 +11,19 @@ trait SubscriptionEventProducer {
   def processAndSend(events: Chunk[Either[Throwable, SubscriptionEvent]]): Task[Unit]
 }
 
-final class LiveSubscriptionEventProducer(topic: String, producer: Producer) extends SubscriptionEventProducer {
+object SubscriptionEventProducer {
+
+  def send(events: Chunk[SubscriptionEvent]): ZIO[SubscriptionEventProducer, Throwable, Unit] = {
+    ZIO.serviceWithZIO[SubscriptionEventProducer](_.send(events))
+  }
+
+  def processAndSend(
+    events: Chunk[Either[Throwable, SubscriptionEvent]]): ZIO[SubscriptionEventProducer, Throwable, Unit] = {
+    ZIO.serviceWithZIO[SubscriptionEventProducer](_.processAndSend(events))
+  }
+}
+
+final class KafkaSubscriptionEventProducer(topic: String, producer: Producer) extends SubscriptionEventProducer {
   private val layer = ZLayer.succeed(producer)
 
   private def sendInternal(events: Chunk[SubscriptionEvent]): Task[Unit] = {
@@ -38,22 +50,10 @@ final class LiveSubscriptionEventProducer(topic: String, producer: Producer) ext
   }
 }
 
-object LiveSubscriptionEventProducer {
+object KafkaSubscriptionEventProducer {
 
   def make(topic: String): ZLayer[Producer, Nothing, SubscriptionEventProducer] = {
-    ZLayer.fromZIO(ZIO.service[Producer].map(new LiveSubscriptionEventProducer(topic, _)))
+    ZLayer.fromZIO(ZIO.service[Producer].map(new KafkaSubscriptionEventProducer(topic, _)))
   }
 
-}
-
-object SubscriptionEventProducer {
-
-  def send(events: Chunk[SubscriptionEvent]): ZIO[SubscriptionEventProducer, Throwable, Unit] = {
-    ZIO.serviceWithZIO[SubscriptionEventProducer](_.send(events))
-  }
-
-  def processAndSend(
-    events: Chunk[Either[Throwable, SubscriptionEvent]]): ZIO[SubscriptionEventProducer, Throwable, Unit] = {
-    ZIO.serviceWithZIO[SubscriptionEventProducer](_.processAndSend(events))
-  }
 }

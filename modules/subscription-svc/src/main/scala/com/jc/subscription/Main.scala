@@ -6,10 +6,11 @@ import com.jc.auth.{JwtAuthenticator, PdiJwtAuthenticator}
 import com.jc.cdc.CdcHandler
 import com.jc.logging.{LogbackLoggingSystem, LoggingSystem}
 import com.jc.logging.api.LoggingSystemGrpcApiHandler
+import com.jc.subscription.module.Logger
 import com.jc.subscription.module.db.cdc.PostgresCdc
 import com.jc.subscription.module.db.{DbConnection, DbInit}
 import com.jc.subscription.module.domain.{LiveSubscriptionDomainService, SubscriptionDomainService}
-import com.jc.subscription.module.event.{LiveSubscriptionEventProducer, SubscriptionEventProducer}
+import com.jc.subscription.module.event.{KafkaSubscriptionEventProducer, SubscriptionEventProducer}
 import com.jc.subscription.module.kafka.KafkaProducer
 import com.jc.subscription.module.repo.{
   LiveSubscriptionEventRepo,
@@ -36,15 +37,6 @@ object Main extends ZIOAppDefault {
     with SubscriptionDomainService with SubscriptionEventProducer with LoggingSystem with LoggingSystemGrpcApiHandler
     with SubscriptionGrpcApiHandler with GrpcServer with HttpServer with CdcHandler
 
-  private val logger = Runtime.removeDefaultLoggers >>> SLF4J.slf4j(
-    zio.LogLevel.Debug,
-    LogFormat.line |-| LogFormat.cause,
-    _ match {
-      case Trace(location, _, _) => location
-      case _ => "zio-subscription-logger"
-    }
-  )
-
   private def createAppConfigAndLayer(config: ConfigSource): Task[(AppAllConfig, TaskLayer[AppEnvironment])] = {
     AppConfig.readConfig[AppAllConfig](config).map { appConfig =>
       appConfig -> ZLayer.make[AppEnvironment](
@@ -57,7 +49,7 @@ object Main extends ZIOAppDefault {
         LoggingSystemGrpcApiHandler.layer,
         SubscriptionGrpcApiHandler.layer,
         KafkaProducer.make(appConfig.kafka),
-        LiveSubscriptionEventProducer.make(appConfig.kafka.subscriptionTopic),
+        KafkaSubscriptionEventProducer.make(appConfig.kafka.subscriptionTopic),
         HttpApiServer.make(appConfig.restApi),
         GrpcApiServer.make(appConfig.grpcApi),
         PostgresCdc.make(appConfig.db, SubscriptionEventProducer.processAndSend)
@@ -94,7 +86,7 @@ object Main extends ZIOAppDefault {
       appConfig -> ZLayer.make[CdcAppEnvironment](
         DbConnection.make(appConfig.db.connection),
         KafkaProducer.make(appConfig.kafka),
-        LiveSubscriptionEventProducer.make(appConfig.kafka.subscriptionTopic),
+        KafkaSubscriptionEventProducer.make(appConfig.kafka.subscriptionTopic),
         HttpApiServer.make(appConfig.restApi),
         PostgresCdc.make(appConfig.db, SubscriptionEventProducer.processAndSend)
       )
@@ -125,5 +117,5 @@ object Main extends ZIOAppDefault {
       } yield ExitCode.success
 
     run.provide(layer)
-  }.provide(logger)
+  }.provide(Logger.layer)
 }

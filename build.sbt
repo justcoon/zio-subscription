@@ -16,11 +16,11 @@ lazy val Versions = new {
   val randomDataGenerator = "2.9"
   val logback = "1.2.11"
   val grpc = "1.47.0"
-  val chimney = "0.6.1"
+  val chimney = "0.6.2"
   val scalaJwt = "9.0.5"
-  val quill = "4.0.0"
+  val quill = "4.1.0"
   val debezium = "1.9.5.Final"
-  val flyway = "8.5.13"
+  val flyway = "9.0.1"
 }
 
 lazy val library =

@@ -7,29 +7,26 @@ import org.http4s.server.middleware.{Logger => HttpServerLogger}
 import org.http4s.server.{Router, Server}
 import org.http4s.implicits._
 import zio.interop.catz._
-import zio.{RIO, UIO, ZIO, ZLayer}
-
+import zio.{Task, UIO, ZIO, ZLayer}
 import eu.timepit.refined.auto._
 
 object HttpApiServer {
-
-  type ServerEnv = Any
 
   private def isReady(): UIO[Boolean] = {
     ZIO.succeed(true)
   }
 
-  private def httpRoutes(): HttpRoutes[RIO[ServerEnv, *]] =
-    Router[RIO[ServerEnv, *]](
-      "/" -> HealthCheckApi.httpRoutes[ServerEnv](isReady)
+  private def httpRoutes(): HttpRoutes[Task] =
+    Router[Task](
+      "/" -> HealthCheckApi.httpRoutes(isReady)
     )
 
-  private def httpApp(): HttpApp[RIO[ServerEnv, *]] =
-    HttpServerLogger.httpApp[RIO[ServerEnv, *]](true, true)(httpRoutes().orNotFound)
+  private def httpApp(): HttpApp[Task] =
+    HttpServerLogger.httpApp[Task](true, true)(httpRoutes().orNotFound)
 
-  def make(config: HttpApiConfig): ZLayer[ServerEnv, Throwable, Server] = {
+  def make(config: HttpApiConfig): ZLayer[Any, Throwable, Server] = {
     ZLayer.scoped(
-      BlazeServerBuilder[RIO[ServerEnv, *]]
+      BlazeServerBuilder[Task]
         .bindHttp(config.port, config.address)
         .withHttpApp(httpApp())
         .resource
@@ -37,10 +34,10 @@ object HttpApiServer {
     )
   }
 
-  val layer: ZLayer[HttpApiConfig with ServerEnv, Throwable, Server] = {
+  val layer: ZLayer[HttpApiConfig, Throwable, Server] = {
     val res = for {
       config <- ZIO.service[HttpApiConfig]
-      server <- BlazeServerBuilder[RIO[ServerEnv, *]]
+      server <- BlazeServerBuilder[Task]
         .bindHttp(config.port, config.address)
         .withHttpApp(httpApp())
         .resource

@@ -2,16 +2,15 @@ package com.jc.subscription.module.api
 
 import org.http4s.{HttpRoutes, Response, Status}
 import org.http4s.dsl.Http4sDsl
-
-import zio.RIO
+import zio.Task
 
 object HealthCheckApi {
 
-  def httpRoutes[R](isReady: () => RIO[R, Boolean]): HttpRoutes[RIO[R, *]] = {
+  def httpRoutes(isReady: () => Task[Boolean]): HttpRoutes[Task] = {
     import zio.interop.catz._
-    val dsl = Http4sDsl[RIO[R, *]]
+    val dsl = Http4sDsl[Task]
     import dsl._
-    HttpRoutes.of[RIO[R, *]] {
+    HttpRoutes.of[Task] {
       case GET -> Root / "ready" =>
         isReady().map { res =>
           if (res) {

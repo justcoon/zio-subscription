@@ -4,6 +4,7 @@ import com.jc.cdc.CdcHandler
 import com.jc.subscription.domain.proto.{CreateSubscriptionReq, GetSubscriptionReq}
 import com.jc.subscription.domain.SubscriptionEntity._
 import com.jc.subscription.model.config.{AppCdcConfig, AppConfig}
+import com.jc.subscription.module.Logger
 import com.jc.subscription.module.db.{DbConnection, DbInit}
 import com.jc.subscription.module.db.cdc.PostgresCdc
 import com.jc.subscription.module.domain.{LiveSubscriptionDomainService, SubscriptionDomainService}
@@ -22,6 +23,7 @@ import zio.{Queue, ZIO, ZLayer}
 import zio.config._
 import zio.config.syntax._
 import zio.config.typesafe._
+import zio.logging.LogFormat
 import zio.logging.backend.SLF4J
 
 import java.util.UUID
@@ -40,7 +42,7 @@ object SubscriptionCdcSpec extends ZIOSpecDefault {
   private val layer: ZLayer[Any, Throwable, AppEnvironment] =
     ZLayer.make[AppEnvironment](
       testConfig.narrow(_.db),
-      DbConnection.live,
+      DbConnection.layer,
       LiveSubscriptionRepo.layer,
       LiveSubscriptionEventRepo.layer,
       LiveSubscriptionDomainService.layer,
@@ -48,7 +50,7 @@ object SubscriptionCdcSpec extends ZIOSpecDefault {
       TestSubscriptionEventProducer.layer,
       testConfig.narrow(_.db.connection),
       PostgresCdc.make(SubscriptionEventProducer.processAndSend)
-    ) ++ SLF4J.slf4j(zio.LogLevel.Debug)
+    ) ++ Logger.layer
 
   override def spec = suite("SubscriptionCdcSpec")(
     test("create and get") {
