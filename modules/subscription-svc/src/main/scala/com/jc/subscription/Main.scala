@@ -25,8 +25,6 @@ import scalapb.zio_grpc.{Server => GrpcServer}
 import org.http4s.server.{Server => HttpServer}
 import eu.timepit.refined.auto._
 import zio.ZIOAppDefault
-import zio.logging.LogFormat
-import zio.logging.backend.SLF4J
 
 object Main extends ZIOAppDefault {
 

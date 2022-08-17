@@ -23,8 +23,6 @@ import zio.{Queue, ZIO, ZLayer}
 import zio.config._
 import zio.config.syntax._
 import zio.config.typesafe._
-import zio.logging.LogFormat
-import zio.logging.backend.SLF4J
 
 import java.util.UUID
 
