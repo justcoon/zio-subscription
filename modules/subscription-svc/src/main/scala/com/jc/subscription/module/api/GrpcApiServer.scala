@@ -16,13 +16,6 @@ import eu.timepit.refined.auto._
 
 object GrpcApiServer {
 
-  def make(config: HttpApiConfig)
-    : ZLayer[LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler, Throwable, GrpcServer] = {
-    GrpcServerLayer.fromServiceList(
-      ServerBuilder.forPort(config.port),
-      GrpcServiceList.access[RCLoggingSystemApiService[Any]].access[RCSubscriptionApiService[Any]])
-  }
-
   val layer
     : ZLayer[HttpApiConfig with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler, Throwable, GrpcServer] = {
     val res = for {

@@ -9,6 +9,7 @@ import org.http4s.implicits._
 import zio.interop.catz._
 import zio.{Task, UIO, ZIO, ZLayer}
 import eu.timepit.refined.auto._
+import zio.metrics.connectors.prometheus.PrometheusPublisher
 
 object HttpApiServer {
 
@@ -16,30 +17,32 @@ object HttpApiServer {
     ZIO.succeed(true)
   }
 
-  private def httpRoutes(): HttpRoutes[Task] =
+  private def httpRoutes(prometheusPublisher: PrometheusPublisher): HttpRoutes[Task] =
     Router[Task](
-      "/" -> HealthCheckApi.httpRoutes(isReady)
+      "/" -> HealthCheckApi.httpRoutes(isReady),
+      "/" -> PrometheusMetricsApi.httpRoutes(prometheusPublisher)
     )
 
-  private def httpApp(): HttpApp[Task] =
-    HttpServerLogger.httpApp[Task](true, true)(httpRoutes().orNotFound)
+  private def httpApp(prometheusPublisher: PrometheusPublisher): HttpApp[Task] =
+    HttpServerLogger.httpApp[Task](true, true)(httpRoutes(prometheusPublisher).orNotFound)
 
-  def make(config: HttpApiConfig): ZLayer[Any, Throwable, Server] = {
+  def make(config: HttpApiConfig, prometheusPublisher: PrometheusPublisher): ZLayer[Any, Throwable, Server] = {
     ZLayer.scoped(
       BlazeServerBuilder[Task]
         .bindHttp(config.port, config.address)
-        .withHttpApp(httpApp())
+        .withHttpApp(httpApp(prometheusPublisher))
         .resource
         .toScopedZIO
     )
   }
 
-  val layer: ZLayer[HttpApiConfig, Throwable, Server] = {
+  val layer: ZLayer[HttpApiConfig with PrometheusPublisher, Throwable, Server] = {
     val res = for {
       config <- ZIO.service[HttpApiConfig]
+      prometheusPublisher <- ZIO.service[PrometheusPublisher]
       server <- BlazeServerBuilder[Task]
         .bindHttp(config.port, config.address)
-        .withHttpApp(httpApp())
+        .withHttpApp(httpApp(prometheusPublisher))
         .resource
         .toScopedZIO
     } yield server

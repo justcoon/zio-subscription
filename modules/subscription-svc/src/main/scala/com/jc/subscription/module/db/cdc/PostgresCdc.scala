@@ -12,7 +12,7 @@ object PostgresCdc {
   def getConfig(dbCdcConfig: DbCdcConfig): Configuration = {
     val poolConfig = dbCdcConfig.connection.connectionPoolConfiguration
     val tables = "subscription_events" :: Nil
-    val schema = "public"
+    val schema = Option(poolConfig.getCurrentSchema).fold("public")(identity)
     val tablesInclude = tables.map(table => s"$schema.$table").mkString(",")
     val offsetStoreFilename = s"${dbCdcConfig.cdc.offsetStoreDir}/${poolConfig.getDatabase}-offsets.dat"
     val dbHistoryFilename = s"${dbCdcConfig.cdc.offsetStoreDir}/${poolConfig.getDatabase}-dbhistory.dat"
@@ -35,6 +35,7 @@ object PostgresCdc {
       .`with`("database.history", "io.debezium.relational.history.FileDatabaseHistory")
       .`with`("database.history.file.filename", dbHistoryFilename)
       .`with`("slot.name", slotName)
+      .`with`("topic.prefix", "subscription")
       .build
   }
 

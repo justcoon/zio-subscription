@@ -65,7 +65,7 @@ object DebeziumCdcHandler {
       engine <- ZIO.fromTry {
         val h: Chunk[ChangeEvent[String, String]] => Try[Unit] =
           events =>
-            Unsafe.unsafeCompat { implicit u =>
+            Unsafe.unsafe { implicit u =>
               r.unsafe.run(handler(events)).toTry
             }
 

@@ -10,7 +10,8 @@ object DbInit {
 
   def run(config: JAsyncContextConfig[PostgreSQLConnection]): Task[MigrateResult] = {
     val cc = config.connectionPoolConfiguration
-    val url = s"jdbc:postgresql://${cc.getHost}:${cc.getPort}/${cc.getDatabase}"
+    val schema = Option(cc.getCurrentSchema).fold("public")(identity)
+    val url = s"jdbc:postgresql://${cc.getHost}:${cc.getPort}/${cc.getDatabase}?currentSchema=$schema"
     ZIO.attempt(
       Flyway
         .configure()

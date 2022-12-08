@@ -7,6 +7,8 @@ import com.jc.cdc.CdcHandler
 import com.jc.logging.{LogbackLoggingSystem, LoggingSystem}
 import com.jc.logging.api.LoggingSystemGrpcApiHandler
 import com.jc.subscription.module.Logger
+import com.jc.subscription.module.Metrics
+import com.jc.subscription.module.Metrics.JvmMetrics
 import com.jc.subscription.module.db.cdc.PostgresCdc
 import com.jc.subscription.module.db.{DbConnection, DbInit}
 import com.jc.subscription.module.domain.{LiveSubscriptionDomainService, SubscriptionDomainService}
@@ -25,10 +27,11 @@ import scalapb.zio_grpc.{Server => GrpcServer}
 import org.http4s.server.{Server => HttpServer}
 import eu.timepit.refined.auto._
 import zio.ZIOAppDefault
+import zio.metrics.connectors.prometheus.PrometheusPublisher
 
 object Main extends ZIOAppDefault {
 
-  type CommonEnvironment = DbConnection
+  type CommonEnvironment = DbConnection with PrometheusPublisher with JvmMetrics
 
   type AppEnvironment = CommonEnvironment
     with JwtAuthenticator with SubscriptionRepo[DbConnection] with SubscriptionEventRepo[DbConnection]
@@ -48,9 +51,10 @@ object Main extends ZIOAppDefault {
         SubscriptionGrpcApiHandler.layer,
         KafkaProducer.make(appConfig.kafka),
         KafkaSubscriptionEventProducer.make(appConfig.kafka.subscriptionTopic),
-        HttpApiServer.make(appConfig.restApi),
-        GrpcApiServer.make(appConfig.grpcApi),
-        PostgresCdc.make(appConfig.db, SubscriptionEventProducer.processAndSend)
+        PostgresCdc.make(appConfig.db, SubscriptionEventProducer.processAndSend),
+        ZLayer.succeed(appConfig.grpcApi) >>> GrpcApiServer.layer,
+        ZLayer.succeed(appConfig.restApi) >>> HttpApiServer.layer,
+        Metrics.layer
       )
     }
   }
@@ -71,8 +75,9 @@ object Main extends ZIOAppDefault {
         LogbackLoggingSystem.make(),
         LoggingSystemGrpcApiHandler.layer,
         SubscriptionGrpcApiHandler.layer,
-        HttpApiServer.make(appConfig.restApi),
-        GrpcApiServer.make(appConfig.grpcApi)
+        ZLayer.succeed(appConfig.grpcApi) >>> GrpcApiServer.layer,
+        ZLayer.succeed(appConfig.restApi) >>> HttpApiServer.layer,
+        Metrics.layer
       )
     }
   }
@@ -85,8 +90,9 @@ object Main extends ZIOAppDefault {
         DbConnection.make(appConfig.db.connection),
         KafkaProducer.make(appConfig.kafka),
         KafkaSubscriptionEventProducer.make(appConfig.kafka.subscriptionTopic),
-        HttpApiServer.make(appConfig.restApi),
-        PostgresCdc.make(appConfig.db, SubscriptionEventProducer.processAndSend)
+        PostgresCdc.make(appConfig.db, SubscriptionEventProducer.processAndSend),
+        ZLayer.succeed(appConfig.restApi) >>> HttpApiServer.layer,
+        Metrics.layer
       )
     }
   }

@@ -1,26 +1,26 @@
 Global / resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
-Scope.Global / scalaVersion := "2.13.8"
+Scope.Global / scalaVersion := "2.13.10"
 
 lazy val Versions = new {
   val kindProjector = "0.13.2"
   val http4s = "0.23.12"
-  val zio = "2.0.0"
+  val zio = "2.0.5"
   val zioInteropCats = "3.3.0"
-  val zioLogging = "2.1.0"
-  val zioMetrics = "2.0.0"
-  val zioKafka = "2.0.0"
+  val zioLogging = "2.1.5"
+  val zioMetrics = "2.0.3"
+  val zioKafka = "2.0.1"
   val zioConfig = "3.0.2"
-  val zioPrelude = "1.0.0-RC15"
-  val jackson = "2.13.3"
+  val zioPrelude = "1.0.0-RC16"
+  val jackson = "2.14.1"
   val circe = "0.14.2"
   val randomDataGenerator = "2.9"
   val logback = "1.2.11"
-  val grpc = "1.48.1"
+  val grpc = "1.51.0"
   val chimney = "0.6.2"
-  val scalaJwt = "9.0.6"
-  val quill = "4.3.0"
-  val debezium = "1.9.5.Final"
-  val flyway = "9.1.5"
+  val scalaJwt = "9.1.2"
+  val quill = "4.6.0"
+  val debezium = "2.0.1.Final"
+  val flyway = "9.10.0"
 }
 
 lazy val library =
@@ -30,7 +30,8 @@ lazy val library =
     val zioStreams = "dev.zio" %% "zio-streams"                                       % Versions.zio
     val zioInteropCats = "dev.zio" %% "zio-interop-cats"                              % Versions.zioInteropCats
     val zioLoggingSlf4j = "dev.zio" %% "zio-logging-slf4j"                            % Versions.zioLogging
-    val zioMetricsPrometheus = "dev.zio" %% "zio-metrics-prometheus"                  % Versions.zioMetrics
+    val zioLoggingSlf4jBridge = "dev.zio" %% "zio-logging-slf4j-bridge"               % Versions.zioLogging
+    val zioMetrics = "dev.zio" %% "zio-metrics-connectors"                            % Versions.zioMetrics
     val zioKafka = "dev.zio" %% "zio-kafka"                                           % Versions.zioKafka
     val jacksonModuleScala = "com.fasterxml.jackson.module" %% "jackson-module-scala" % Versions.jackson
     val http4sCore = "org.http4s" %% "http4s-core"                                    % Versions.http4s
@@ -107,6 +108,7 @@ lazy val `core` =
         library.zioStreams,
         library.zioInteropCats,
         library.zioLoggingSlf4j,
+        library.zioMetrics,
         library.http4sCore,
         library.http4sDsl,
         library.circeGeneric,
