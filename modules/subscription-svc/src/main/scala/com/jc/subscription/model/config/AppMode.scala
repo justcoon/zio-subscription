@@ -1,8 +1,7 @@
 package com.jc.subscription.model.config
 
-import zio.config.magnolia.descriptor
-import zio.IO
-import zio.config.ReadError
+import zio.config.magnolia.deriveConfig
+import zio.ZIO
 
 sealed trait AppMode extends Product with Serializable
 
@@ -11,11 +10,9 @@ object AppMode {
   final case object svc extends AppMode
   final case object cdc extends AppMode
 
-  implicit val configDescription = descriptor[AppMode].default(AppMode.all)
+  implicit val config = deriveConfig[AppMode].withDefault(AppMode.all)
 
-  def readMode(config: zio.config.ConfigSource): IO[ReadError[String], AppMode] = {
-    import zio.config._
-    import ConfigDescriptor._
-    read(nested("mode")(configDescription) from config)
+  def readMode = {
+    ZIO.config(config.nested("mode"))
   }
 }

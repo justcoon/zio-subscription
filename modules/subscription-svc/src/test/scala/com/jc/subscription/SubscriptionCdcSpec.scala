@@ -32,21 +32,23 @@ object SubscriptionCdcSpec extends ZIOSpecDefault {
     with SubscriptionRepo[DbConnection] with SubscriptionEventRepo[DbConnection] with SubscriptionDomainService
     with SubscriptionEventProducer with CdcHandler with Queue[SubscriptionEventRepo.SubscriptionEvent]
 
-  private val testConfig = ZLayer.fromZIO(AppConfig.readConfig[AppCdcConfig](ConfigSource.fromResourcePath.memoize))
+  private val testConfig: ZLayer[Any, Config.Error, AppCdcConfig] =
+    Runtime.setConfigProvider(TypesafeConfigProvider.fromResourcePath()) >>>
+      ZLayer.fromZIO(ZIO.config(AppCdcConfig.appCdcConfig))
 
   private val testQueue: ZLayer[Any, Nothing, Queue[SubscriptionEventRepo.SubscriptionEvent]] =
     ZLayer.fromZIO(Queue.unbounded[SubscriptionEventRepo.SubscriptionEvent])
 
   private val layer: ZLayer[Any, Throwable, AppEnvironment] =
     ZLayer.make[AppEnvironment](
-      testConfig.narrow(_.db),
+      testConfig.project(_.db),
       DbConnection.layer,
       LiveSubscriptionRepo.layer,
       LiveSubscriptionEventRepo.layer,
       LiveSubscriptionDomainService.layer,
       testQueue,
       TestSubscriptionEventProducer.layer,
-      testConfig.narrow(_.db.connection),
+      testConfig.project(_.db.connection),
       PostgresCdc.make(SubscriptionEventProducer.processAndSend)
     ) ++ Logger.layer
 
@@ -65,5 +67,5 @@ object SubscriptionCdcSpec extends ZIOSpecDefault {
           events.exists(_.entityId == id))(isTrue)
       }
     }
-  ).provideLayer(layer) @@ beforeAll(DbInit.run.provideLayer(testConfig.narrow(_.db.connection))) @@ withLiveClock
+  ).provideLayer(layer) @@ beforeAll(DbInit.run.provideLayer(testConfig.project(_.db.connection))) @@ withLiveClock
 }
