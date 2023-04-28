@@ -18,29 +18,31 @@ import com.jc.subscription.domain.proto.{
 }
 import com.jc.subscription.domain.proto.ZioSubscriptionApi.RCSubscriptionApiService
 import com.jc.subscription.module.domain.SubscriptionDomainService
-import io.grpc.Status
+import io.grpc.{Status, StatusException}
 import scalapb.zio_grpc.RequestContext
 import zio.{ZIO, ZLayer}
 
 final class SubscriptionGrpcApiHandler(
   subscriptionService: SubscriptionDomainService,
   jwtAuthenticator: JwtAuthenticator)
-    extends RCSubscriptionApiService[Any] {
+    extends RCSubscriptionApiService {
 
   private val authenticated = GrpcJwtAuth.authenticated(jwtAuthenticator)
 
   override def getSubscription(
-    request: GetSubscriptionReq): ZIO[Any with RequestContext, Status, GetSubscriptionRes] = {
+    request: GetSubscriptionReq,
+    context: RequestContext): ZIO[Any, StatusException, GetSubscriptionRes] = {
     for {
-      _ <- authenticated
-      res <- subscriptionService.getSubscription(request).mapError(SubscriptionGrpcApiHandler.toInternalStatus)
+      _ <- authenticated(context)
+      res <- subscriptionService.getSubscription(request).mapError(SubscriptionGrpcApiHandler.toInternalStatusException)
     } yield res
   }
 
   override def createSubscription(
-    request: CreateSubscriptionReq): ZIO[Any with RequestContext, Status, CreateSubscriptionRes] = {
+    request: CreateSubscriptionReq,
+    context: RequestContext): ZIO[Any, StatusException, CreateSubscriptionRes] = {
     for {
-      _ <- authenticated
+      _ <- authenticated(context)
       res <- SubscriptionGrpcApiHandler
         .validated(request)
         .foldZIO(
@@ -50,15 +52,19 @@ final class SubscriptionGrpcApiHandler(
                 request.id,
                 CreateSubscriptionRes.Result.Failure(
                   s"Subscription create error (${SubscriptionGrpcApiHandler.getValidationMessage(e)})"))),
-          _ => subscriptionService.createSubscription(request).mapError(SubscriptionGrpcApiHandler.toInternalStatus)
+          _ =>
+            subscriptionService
+              .createSubscription(request)
+              .mapError(SubscriptionGrpcApiHandler.toInternalStatusException)
         )
     } yield res
   }
 
   override def updateSubscriptionEmail(
-    request: UpdateSubscriptionEmailReq): ZIO[Any with RequestContext, Status, UpdateSubscriptionEmailRes] = {
+    request: UpdateSubscriptionEmailReq,
+    context: RequestContext): ZIO[Any, StatusException, UpdateSubscriptionEmailRes] = {
     for {
-      _ <- authenticated
+      _ <- authenticated(context)
       res <- SubscriptionGrpcApiHandler
         .validated(request)
         .foldZIO(
@@ -69,15 +75,18 @@ final class SubscriptionGrpcApiHandler(
                 UpdateSubscriptionEmailRes.Result.Failure(
                   s"Subscription email update error (${SubscriptionGrpcApiHandler.getValidationMessage(e)})"))),
           _ =>
-            subscriptionService.updateSubscriptionEmail(request).mapError(SubscriptionGrpcApiHandler.toInternalStatus)
+            subscriptionService
+              .updateSubscriptionEmail(request)
+              .mapError(SubscriptionGrpcApiHandler.toInternalStatusException)
         )
     } yield res
   }
 
   override def updateSubscriptionAddress(
-    request: UpdateSubscriptionAddressReq): ZIO[Any with RequestContext, Status, UpdateSubscriptionAddressRes] = {
+    request: UpdateSubscriptionAddressReq,
+    context: RequestContext): ZIO[Any, StatusException, UpdateSubscriptionAddressRes] = {
     for {
-      _ <- authenticated
+      _ <- authenticated(context)
       res <- SubscriptionGrpcApiHandler
         .validated(request)
         .foldZIO(
@@ -88,36 +97,40 @@ final class SubscriptionGrpcApiHandler(
                 UpdateSubscriptionAddressRes.Result.Failure(
                   s"Subscription address update error (${SubscriptionGrpcApiHandler.getValidationMessage(e)})"))),
           _ =>
-            subscriptionService.updateSubscriptionAddress(request).mapError(SubscriptionGrpcApiHandler.toInternalStatus)
+            subscriptionService
+              .updateSubscriptionAddress(request)
+              .mapError(SubscriptionGrpcApiHandler.toInternalStatusException)
         )
     } yield res
   }
 
   override def removeSubscription(
-    request: RemoveSubscriptionReq): ZIO[Any with RequestContext, Status, RemoveSubscriptionRes] = {
+    request: RemoveSubscriptionReq,
+    context: RequestContext): ZIO[Any, StatusException, RemoveSubscriptionRes] = {
     for {
-      _ <- authenticated
-      res <- subscriptionService.removeSubscription(request).mapError(SubscriptionGrpcApiHandler.toInternalStatus)
+      _ <- authenticated(context)
+      res <- subscriptionService
+        .removeSubscription(request)
+        .mapError(SubscriptionGrpcApiHandler.toInternalStatusException)
     } yield res
   }
 
   override def getSubscriptions(
-    request: GetSubscriptionsReq): ZIO[Any with RequestContext, Status, GetSubscriptionsRes] = {
+    request: GetSubscriptionsReq,
+    context: RequestContext): ZIO[Any, StatusException, GetSubscriptionsRes] = {
     for {
-      _ <- authenticated
-      res <- subscriptionService.getSubscriptions(request).mapError(SubscriptionGrpcApiHandler.toInternalStatus)
+      _ <- authenticated(context)
+      res <- subscriptionService
+        .getSubscriptions(request)
+        .mapError(SubscriptionGrpcApiHandler.toInternalStatusException)
     } yield res
   }
 }
 
 object SubscriptionGrpcApiHandler {
 
-  def toInternalStatus(e: Throwable): Status = {
-    Status.INTERNAL.withDescription(e.getMessage)
-  }
-
-  def toStatus(e: scalapb.validate.Failure): Status = {
-    Status.INVALID_ARGUMENT.withDescription(getValidationMessage(e))
+  def toInternalStatusException(e: Throwable): StatusException = {
+    new StatusException(Status.INTERNAL.withDescription(e.getMessage))
   }
 
   def getValidationMessage(e: scalapb.validate.Failure): String =
@@ -132,13 +145,7 @@ object SubscriptionGrpcApiHandler {
   }
 
   val layer: ZLayer[SubscriptionDomainService with JwtAuthenticator, Nothing, SubscriptionGrpcApiHandler] = {
-    val res = for {
-      jwtAuth <- ZIO.service[JwtAuthenticator]
-      service <- ZIO.service[SubscriptionDomainService]
-    } yield {
-      new SubscriptionGrpcApiHandler(service, jwtAuth)
-    }
-    ZLayer.fromZIO(res)
+    ZLayer.fromFunction(new SubscriptionGrpcApiHandler(_, _))
   }
 
 }

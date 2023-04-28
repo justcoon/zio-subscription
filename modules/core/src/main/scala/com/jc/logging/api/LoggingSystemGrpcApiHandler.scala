@@ -13,12 +13,14 @@ import com.jc.logging.proto.{
   SetLoggerConfigurationReq
 }
 import com.jc.logging.proto.ZioLoggingSystemApi.RCLoggingSystemApiService
-import io.grpc.Status
+import io.grpc.StatusException
 import scalapb.zio_grpc.RequestContext
 import zio.{UIO, ZIO, ZLayer}
 
 final class LoggingSystemGrpcApiHandler(loggingSystem: LoggingSystem, authenticator: JwtAuthenticator)
-    extends RCLoggingSystemApiService[Any] {
+    extends RCLoggingSystemApiService {
+
+  private val authenticated = GrpcJwtAuth.authenticated(authenticator)
 
   def getSupportedLogLevels: UIO[Seq[LogLevel]] =
     loggingSystem.getSupportedLogLevels.map { levels =>
@@ -33,9 +35,10 @@ final class LoggingSystemGrpcApiHandler(loggingSystem: LoggingSystem, authentica
     )
 
   override def setLoggerConfiguration(
-    request: SetLoggerConfigurationReq): ZIO[Any with RequestContext, Status, LoggerConfigurationRes] = {
+    request: SetLoggerConfigurationReq,
+    context: RequestContext): ZIO[Any, StatusException, LoggerConfigurationRes] = {
     for {
-      _ <- GrpcJwtAuth.authenticated(authenticator)
+      _ <- authenticated(context)
       res <- loggingSystem.setLogLevel(
         request.name,
         request.level.flatMap(LoggingSystemGrpcApiHandler.logLevelMapping.fromLogger.get))
@@ -48,18 +51,20 @@ final class LoggingSystemGrpcApiHandler(loggingSystem: LoggingSystem, authentica
   }
 
   override def getLoggerConfiguration(
-    request: GetLoggerConfigurationReq): ZIO[Any with RequestContext, Status, LoggerConfigurationRes] = {
+    request: GetLoggerConfigurationReq,
+    context: RequestContext): ZIO[Any, StatusException, LoggerConfigurationRes] = {
     for {
-      _ <- GrpcJwtAuth.authenticated(authenticator)
+      _ <- authenticated(context)
       levels <- getSupportedLogLevels
       configuration <- loggingSystem.getLoggerConfiguration(request.name)
     } yield LoggerConfigurationRes(configuration.map(toApiLoggerConfiguration), levels)
   }
 
   override def getLoggerConfigurations(
-    request: GetLoggerConfigurationsReq): ZIO[Any with RequestContext, Status, LoggerConfigurationsRes] = {
+    request: GetLoggerConfigurationsReq,
+    context: RequestContext): ZIO[Any, StatusException, LoggerConfigurationsRes] = {
     for {
-      _ <- GrpcJwtAuth.authenticated(authenticator)
+      _ <- authenticated(context)
       levels <- getSupportedLogLevels
       configurations <- loggingSystem.getLoggerConfigurations
     } yield LoggerConfigurationsRes(configurations.map(toApiLoggerConfiguration), levels)

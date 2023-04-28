@@ -109,7 +109,11 @@ final class LiveSubscriptionDomainService(
   override def createSubscription(request: CreateSubscriptionReq): ZIO[Any, Throwable, CreateSubscriptionRes] = {
     ZIO.logInfo(s"createSubscription - id: ${request.id}") *>
       ctx.transaction {
-        val value = request.into[SubscriptionRepo.Subscription].withFieldConst(_.createdAt, Instant.now()).transform
+        val value = request
+          .into[SubscriptionRepo.Subscription]
+          .withFieldConst(_.createdAt, Instant.now())
+          .withFieldConst(_.modifiedAt, None)
+          .transform
 
         for {
           stored <- subscriptionRepo.find(value.id)
@@ -214,7 +218,7 @@ final class LiveSubscriptionDomainService(
       ctx.transaction {
         subscriptionRepo
           .findAll()
-          .map(res => GetSubscriptionsRes(res.map(_.transformInto[com.jc.subscription.domain.proto.Subscription])))
+          .map(res => GetSubscriptionsRes(res.map(_.into[com.jc.subscription.domain.proto.Subscription].transform)))
       }.provideLayer(dbLayer)
   }
 }

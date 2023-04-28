@@ -1,23 +1,12 @@
 package com.jc.subscription.model.config
 
 import com.jc.auth.JwtConfig
-import zio.IO
-import zio.config._
-import ConfigDescriptor._
 
 sealed trait AppConfig {
   def restApi: HttpApiConfig
   def prometheus: PrometheusConfig
   def db: DbConfig
   def mode: AppMode
-}
-
-object AppConfig {
-
-  def readConfig[C <: AppConfig](config: zio.config.ConfigSource)(implicit
-    r: ConfigDescriptor[C]): IO[ReadError[String], C] = {
-    read(r from config)
-  }
 }
 
 final case class AppAllConfig(
@@ -33,12 +22,14 @@ final case class AppAllConfig(
 
 object AppAllConfig {
 
-  implicit val appAllConfigDescription = (nested("kafka")(KafkaConfig.kafkaConfigDescription) zip
-    nested("grpc-api")(HttpApiConfig.httpConfigDescription) zip
-    nested("rest-api")(HttpApiConfig.httpConfigDescription) zip
-    nested("prometheus")(PrometheusConfig.prometheusConfigDescription) zip
-    nested("jwt")(JwtConfig.jwtConfigDescription) zip
-    nested("db")(DbCdcConfig.dbCdcConfigDescription)).to[AppAllConfig]
+  implicit val appAllConfig = (KafkaConfig.kafkaConfig.nested("kafka") zip
+    HttpApiConfig.httpConfig.nested("grpc-api") zip
+    HttpApiConfig.httpConfig.nested("rest-api") zip
+    PrometheusConfig.prometheusConfig.nested("prometheus") zip
+    JwtConfig.jwtConfig.nested("jwt") zip
+    DbCdcConfig.dbCdcConfig.nested("db")).map { case (kafka, grpcApi, restApi, prometheus, jwt, db) =>
+    AppAllConfig(kafka, grpcApi, restApi, prometheus, jwt, db)
+  }
 }
 
 final case class AppCdcConfig(kafka: KafkaConfig, restApi: HttpApiConfig, prometheus: PrometheusConfig, db: DbCdcConfig)
@@ -48,10 +39,12 @@ final case class AppCdcConfig(kafka: KafkaConfig, restApi: HttpApiConfig, promet
 
 object AppCdcConfig {
 
-  implicit val appCdcConfigDescriptor = (nested("kafka")(KafkaConfig.kafkaConfigDescription) zip
-    nested("rest-api")(HttpApiConfig.httpConfigDescription) zip
-    nested("prometheus")(PrometheusConfig.prometheusConfigDescription) zip
-    nested("db")(DbCdcConfig.dbCdcConfigDescription)).to[AppCdcConfig]
+  implicit val appCdcConfig = (KafkaConfig.kafkaConfig.nested("kafka") zip
+    HttpApiConfig.httpConfig.nested("rest-api") zip
+    PrometheusConfig.prometheusConfig.nested("prometheus") zip
+    DbCdcConfig.dbCdcConfig.nested("db")).map { case (kafka, restApi, prometheus, db) =>
+    AppCdcConfig(kafka, restApi, prometheus, db)
+  }
 }
 
 final case class AppSvcConfig(
@@ -66,9 +59,11 @@ final case class AppSvcConfig(
 
 object AppSvcConfig {
 
-  implicit val appSvcConfigDescriptor = (nested("grpc-api")(HttpApiConfig.httpConfigDescription) zip
-    nested("rest-api")(HttpApiConfig.httpConfigDescription) zip
-    nested("prometheus")(PrometheusConfig.prometheusConfigDescription) zip
-    nested("jwt")(JwtConfig.jwtConfigDescription) zip
-    nested("db")(DbConConfig.dbConfigDescription)).to[AppSvcConfig]
+  implicit val appSvcConfig = (HttpApiConfig.httpConfig.nested("grpc-api") zip
+    HttpApiConfig.httpConfig.nested("rest-api") zip
+    PrometheusConfig.prometheusConfig.nested("prometheus") zip
+    JwtConfig.jwtConfig.nested("jwt") zip
+    DbConConfig.dbConfig.nested("db")).map { case (grpcApi, restApi, prometheus, jwt, db) =>
+    AppSvcConfig(grpcApi, restApi, prometheus, jwt, db)
+  }
 }

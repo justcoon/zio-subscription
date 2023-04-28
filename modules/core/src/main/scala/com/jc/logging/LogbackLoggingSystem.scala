@@ -3,7 +3,6 @@ package com.jc.logging
 import ch.qos.logback.classic
 import ch.qos.logback.classic.{Level, LoggerContext}
 import org.slf4j.Logger
-import org.slf4j.impl.StaticLoggerBinder
 import zio.{UIO, ZIO, ZLayer}
 
 import scala.util.Try
@@ -74,7 +73,7 @@ object LogbackLoggingSystem {
   }
 
   def make(): ZLayer[Any, Throwable, LoggingSystem] = {
-    StaticLoggerBinder.getSingleton.getLoggerFactory match {
+    org.slf4j.LoggerFactory.getILoggerFactory() match {
       case loggerContext: LoggerContext => ZLayer.succeed(new LogbackLoggingSystemService(loggerContext))
       case _ => ZLayer.fail(new RuntimeException("LoggerFactory is not a Logback LoggerContext"))
     }

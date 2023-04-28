@@ -38,8 +38,8 @@ object Main extends ZIOAppDefault {
     with SubscriptionDomainService with SubscriptionEventProducer with LoggingSystem with LoggingSystemGrpcApiHandler
     with SubscriptionGrpcApiHandler with GrpcServer with HttpServer with CdcHandler
 
-  private def createAppConfigAndLayer(config: ConfigSource): Task[(AppAllConfig, TaskLayer[AppEnvironment])] = {
-    AppConfig.readConfig[AppAllConfig](config).map { appConfig =>
+  private def createAppConfigAndLayer: Task[(AppAllConfig, TaskLayer[AppEnvironment])] = {
+    ZIO.config(AppAllConfig.appAllConfig).map { appConfig =>
       appConfig -> ZLayer.make[AppEnvironment](
         PdiJwtAuthenticator.make(appConfig.jwt),
         DbConnection.make(appConfig.db.connection),
@@ -64,8 +64,8 @@ object Main extends ZIOAppDefault {
     with SubscriptionDomainService with LoggingSystem with LoggingSystemGrpcApiHandler with SubscriptionGrpcApiHandler
     with GrpcServer with HttpServer
 
-  private def createSvcAppConfigAndLayer(config: ConfigSource): Task[(AppSvcConfig, TaskLayer[SvcAppEnvironment])] = {
-    AppConfig.readConfig[AppSvcConfig](config).map { appConfig =>
+  private def createSvcAppConfigAndLayer: Task[(AppSvcConfig, TaskLayer[SvcAppEnvironment])] = {
+    ZIO.config(AppSvcConfig.appSvcConfig).map { appConfig =>
       appConfig -> ZLayer.make[SvcAppEnvironment](
         PdiJwtAuthenticator.make(appConfig.jwt),
         DbConnection.make(appConfig.db.connection),
@@ -84,8 +84,8 @@ object Main extends ZIOAppDefault {
 
   type CdcAppEnvironment = CommonEnvironment with SubscriptionEventProducer with HttpServer with CdcHandler
 
-  private def createCdcAppConfigAndLayer(config: ConfigSource): Task[(AppCdcConfig, TaskLayer[CdcAppEnvironment])] = {
-    AppConfig.readConfig[AppCdcConfig](config).map { appConfig =>
+  private def createCdcAppConfigAndLayer: Task[(AppCdcConfig, TaskLayer[CdcAppEnvironment])] = {
+    ZIO.config(AppCdcConfig.appCdcConfig).map { appConfig =>
       appConfig -> ZLayer.make[CdcAppEnvironment](
         DbConnection.make(appConfig.db.connection),
         KafkaProducer.make(appConfig.kafka),
@@ -99,14 +99,12 @@ object Main extends ZIOAppDefault {
 
   private val appConfigAndLayer: ZIO[Any, Throwable, (AppConfig, ZLayer[Any, Throwable, CommonEnvironment])] = {
     for {
-      config <- ZIO.succeed(ConfigSource.fromResourcePath.memoize)
-
-      mode <- AppMode.readMode(config)
+      mode <- AppMode.readMode
 
       res <- mode match {
-        case AppMode.`all` => createAppConfigAndLayer(config)
-        case AppMode.`svc` => createSvcAppConfigAndLayer(config)
-        case AppMode.`cdc` => createCdcAppConfigAndLayer(config)
+        case AppMode.`all` => createAppConfigAndLayer
+        case AppMode.`svc` => createSvcAppConfigAndLayer
+        case AppMode.`cdc` => createCdcAppConfigAndLayer
       }
     } yield res
 
@@ -121,5 +119,5 @@ object Main extends ZIOAppDefault {
       } yield ExitCode.success
 
     run.provide(layer)
-  }.provide(Logger.layer)
+  }.provide(Logger.layer ++ Runtime.setConfigProvider(TypesafeConfigProvider.fromResourcePath()))
 }
