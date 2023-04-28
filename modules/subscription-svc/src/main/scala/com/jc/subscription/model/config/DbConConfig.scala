@@ -35,7 +35,9 @@ object DbConConfig {
 final case class CdcConfig(offsetStoreDir: OffsetDir)
 
 object CdcConfig {
-  implicit val cdcConfig: Config[CdcConfig] = deriveConfig[CdcConfig]
+  val cdcConfig: Config[CdcConfig] = refineType[OffsetDir]("offset-store-dir").map(CdcConfig(_))
+
+  implicit val cdcDerivedConfig = DeriveConfig[CdcConfig](cdcConfig, true)
 }
 
 final case class DbCdcConfig(cdc: CdcConfig, connection: JAsyncContextConfig[PostgreSQLConnection]) extends DbConfig
